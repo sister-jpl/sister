@@ -1,0 +1,8 @@
+ENVI
+bands = 1
+byte order = 0
+data type = 4
+interleave = bsq
+lines = 1000
+samples = 230
+band_names = {wavelength shift(nm)}
