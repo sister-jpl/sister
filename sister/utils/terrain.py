@@ -25,8 +25,6 @@ def dem_generate(longitude,latitude,elev_dir,temp_dir):
 
     Returns:
         dem (np.array): Elevation array.
-        slope (np.array): Slope array.
-        aspec (np.array): Aspect array.
 
     '''
     # Get extents of image
@@ -119,8 +117,8 @@ def slope_aspect(elevation,temp_dir):
     writer = WriteENVI(dem_file,dem_dict)
     writer.write_band(elevation,0)
 
-    slope_file =  '%sPRS_slp' % temp_dir
-    aspect_file =  '%sPRS_asp' % temp_dir
+    slope_file =  '%s_slope' % temp_dir
+    aspect_file =  '%s_aspect' % temp_dir
 
     print('Calculating slope')
     os.system('gdaldem slope -of ENVI %s %s'% (dem_file,slope_file))
