@@ -4,6 +4,7 @@
 SISTER
 Space-based Imaging Spectroscopy and Thermal PathfindER
 Author: Adam Chlus
+
 """
 import os
 import glob
@@ -28,9 +29,10 @@ class Projector():
         self.indices = None
         self.pixel_size = None
         self.input_shape = None
-        self.ouput_shape = None
-        self.mask = None
+        self.inter_shape = None
+        self.output_shape = None
 
+        self.mask = None
 
     def create_tree(self,coords,input_shape):
         self.input_shape = input_shape
@@ -48,8 +50,8 @@ class Projector():
         if columns%2 !=0:
             columns+=1
 
-        self.output_shape = (int(lines),int(columns))
-        int_north,int_east = np.indices(self.output_shape)
+        self.inter_shape = (int(lines),int(columns))
+        int_north,int_east = np.indices(self.inter_shape)
         int_east = (int_east*half_pix + ulx).flatten()
         int_north = (uly-int_north*half_pix).flatten()
         int_north= np.expand_dims(int_north,axis=1)
@@ -58,11 +60,12 @@ class Projector():
 
         distances,self.indices =  self.tree.query(dest_points,k=1)
         self.indices = np.unravel_index(self.indices,self.input_shape)
-        distances =  distances.reshape(self.output_shape)
+        distances =  distances.reshape(self.inter_shape)
         self.mask = distances > 2*pixel_size
+        self.output_shape = (int(lines/2),int(columns/2))
 
-    def project(self,band,no_data):
-        band = np.copy(band[self.indices[0],self.indices[1]].reshape(self.output_shape))
+    def project_band(self,band,no_data):
+        band = np.copy(band[self.indices[0],self.indices[1]].reshape(self.inter_shape))
         band[self.mask] = np.nan
         band = np.nanmean(view_as_blocks(band, (2,2)),axis=(2,3))
         band[np.isnan(band)] = no_data
@@ -116,7 +119,7 @@ def utm2dd(easting,northing,zone,direction):
     return longitude,latitude
 
 
-jit(nopython=True)
+@jit(nopython=True)
 def optimal_shift(sx,sy,px1,px2,py1,py2,offset_x,offset_y,warp_band,ref_band):
     '''Calculate optimal X and Y shift based on correlation between
     reference and warp bands. Use numba to speed up processing.
@@ -125,7 +128,7 @@ def optimal_shift(sx,sy,px1,px2,py1,py2,offset_x,offset_y,warp_band,ref_band):
     warp_sub = warp_band[py1:py2,px1:px2]
     mask = warp_sub.flatten() != -9999
     x = warp_sub.flatten()[mask]
-    x_error = x -  x.mean()
+    x_error = x-x.mean()
     x_error_sqr_sum = np.sum(x_error**2)
 
     opt_y,opt_x = 0,0
@@ -202,7 +205,7 @@ def image_match(ref_file,warp_band,ulx,uly,sensor_zn_prj,sensor_az_prj,elevation
             zn_sub =  sensor_zn_prj[py1:py2,px1:px2].flatten()
             az_sub =  sensor_az_prj[py1:py2,px1:px2].flatten()
             if np.sum(mask)> 100:
-                covar_surf[sy,sx,:] = [zn_sub[mask].mean(),elev_sub[mask].mean(),az_sub[mask].mean()]
+                covar_surf[sy,sx,:] = [zn_sub[mask].mean(),az_sub[mask].mean(),elev_sub[mask].mean()]
                 results.append(ray_optimal_shift.remote(sx,sy,px1,px2,py1,py2,
                                                         offset_x,offset_y,
                                                         warp_band_r,ref_band_r))
@@ -232,11 +235,36 @@ def image_match(ref_file,warp_band,ulx,uly,sensor_zn_prj,sensor_az_prj,elevation
     X = covar_surf[mask]
     y = shift_surf[:,:,0][mask]
     model_y = sm.OLS(y,sm.add_constant(X)).fit()
+    print('Y offset model fit : %s' % round(model_y.rsquared,3))
 
     y = shift_surf[:,:,1][mask]
     model_x = sm.OLS(y,sm.add_constant(X)).fit()
+    print('X offset model fit : %s' % round(model_y.rsquared,3))
 
     return (model_y.params,model_x.params)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
