@@ -6,13 +6,9 @@ Space-based Imaging Spectroscopy and Thermal PathfindER
 Author: Adam Chlus
 """
 
-import argparse
 import datetime as dt
-import glob
 import os
-import shutil
 import zipfile
-import tarfile
 import h5py
 import hytools as ht
 from hytools.io.envi import WriteENVI,envi_header_dict
@@ -24,16 +20,19 @@ from scipy.spatial import cKDTree
 import pyproj
 from pysolar import solar
 from skimage.util import view_as_blocks
-import pandas as pd
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import uniform_filter
+from ..utils.terrain import *
+from ..utils.geometry import *
+from ..utils.ancillary import *
+
 
 home = os.path.expanduser("~")
 
-def he5_to_envi(base_name,in_dir,out_dir,elev_dir,smile = None,match=None,
-                refl = False):
+def he5_to_envi(base_name,l1_zip,l2c_zip,out_dir,elev_dir,temp_dir,
+                smile = None,match=None,rfl = False, project = True, res = 30):
     '''
     This function exports three unprojected files:
-        *_rad_unprj : Merged and optionaly smile corrected radiance cube
+        *_rad_unpj : Merged and optionaly smile corrected radiance cube
         *_obs_unprj : Observables file in the format of JPL obs files:
                 1. Pathlength (m)
                 2. Sensor view azimuth angle (degrees)
@@ -47,48 +46,47 @@ def he5_to_envi(base_name,in_dir,out_dir,elev_dir,smile = None,match=None,
                 2. Longitude (decimal degrees)
                 3. Elevation (m)
 
-    base_name(str): PRISMA scene identifier name in the form:
-                YYYMMDDHHMMSSMsMs_YYYMMDDHHMMSSMsMs_0001
-    in_dir(str): Directory containing both L1 and L2C zipped HDF files
-    out_di(str): Output directory of ENVI datasets
+    l1(str): L1 zipped data product path
+    l2(str): L2C zipped data product path
+    base_name :
+    out_dir(str): Output directory of ENVI datasets
     elev_dir (str): Directory zipped elevation tiles
     smile (str) : Pathname of smile correction surface file
     match (str or list) : Pathname to Landsat image(s) for image re-registration (recommended)
     rfl (bool) : Export ASI L2C surface reflectance
     '''
 
-    home = os.path.expanduser("~")
-    elev_dir = '/data2/cop_dsm/'
-    input_dir  = '/data2/prisma/zip/'
-    base_name = "20200905103003_20200905103007_0001"
-    out_dir = '/data2/prisma/envi/PRS_%s/' % base_name
-    temp_dir = '/data2/temp/temp_%s/' % base_name
-    smile = '%s/Dropbox/rs/sister/data/prisma/PRS_20200721104249_20200721104253_0001_smile' % home
-    match = '/data2/landsat/LC08_L2SP_193029_20200423_20200822_02_T1_SR_B5.TIF'
-    rfl = False
+    # home = os.path.expanduser("~")
+    # elev_dir = '/data2/cop_dsm/'
+    # base_name = "20200703022145_20200703022149_0001"
+    # l1_zip  = '/data2/prisma/zip/PRS_L1_STD_OFFL_%s.zip'% base_name
+    # l2c_zip  = '/data2/prisma/zip/PRS_L2C_STD_%s.zip' % base_name
+    # out_dir = '/data1/temp//PRISMA/'
+    # temp_dir =  '/data1/temp//temp_PRISMA/'
+    # smile = '%s/Dropbox/rs/sister/data/prisma/PRS_20200721104249_20200721104253_0001_smile' % home
+    # match = '/data2/landsat/LC08_L2SP_115029_20190708_20200827_02_T1_SR_B5.TIF'
+    # rfl = False
+    # project = True
+    # res = 30
 
-    for file in glob.glob("%s*%s*" % (input_dir,base_name)):
+    for file in [l1_zip,l2c_zip]:
         zip_base  =os.path.basename(file)
         print('Unzipping %s' % zip_base)
         with zipfile.ZipFile(file,'r') as zipped:
             zipped.extractall(temp_dir)
 
     l1  = '%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name)
-    l2  = '%sPRS_L2C_STD_%s.he5' % (temp_dir,base_name)
+    l2c  = '%sPRS_L2C_STD_%s.he5' % (temp_dir,base_name)
 
-    if not os.path.isdir(out_dir):
-        os.mkdir(out_dir)
-
-    if not os.path.isdir(temp_dir):
-        os.mkdir(temp_dir)
+    file_suffixes =  ['rad','loc','obs']
 
     if smile:
         smile_obj = ht.HyTools()
         smile_obj.read_file(smile, 'envi')
-        shift_surf_smooth = smile.get_band(0)
+        shift_surf_smooth = smile_obj.get_band(0)
         smile_correct = True
 
-    for product in [l1,l2]:
+    for product in [l1,l2c]:
         l_obj = h5py.File(product,'r')
         subdir = [x for x in l_obj['HDFEOS']["SWATHS"].keys() if 'HCO' in x][0]
 
@@ -118,7 +116,7 @@ def he5_to_envi(base_name,in_dir,out_dir,elev_dir,smile = None,match=None,
         rad_dict['data type'] = 12
         rad_dict['wavelength units'] = "nanometers"
         rad_dict['byte order'] = 0
-        vnir_temp = '%sNA-%s_%s_vnir' % (temp_dir,base_name,measurement)
+        vnir_temp = '%sPRISMA_-%s_%s_vnir' % (temp_dir,base_name,measurement)
 
         writer = WriteENVI(vnir_temp,rad_dict )
         writer.write_chunk(np.moveaxis(vnir_data[:,:,:],1,2), 0,0)
@@ -138,7 +136,7 @@ def he5_to_envi(base_name,in_dir,out_dir,elev_dir,smile = None,match=None,
         rad_dict['data type'] = 12
         rad_dict['wavelength units'] = "nanometers"
         rad_dict['byte order'] = 0
-        swir_temp = '%sNA-%s_%s_swir' % (temp_dir,base_name,measurement)
+        swir_temp = '%sPRISMA_%s_%s_swir' % (temp_dir,base_name,measurement)
 
         writer = WriteENVI(swir_temp,rad_dict )
         writer.write_chunk(np.moveaxis(swir_data[:,:,:],1,2), 0,0)
@@ -155,7 +153,10 @@ def he5_to_envi(base_name,in_dir,out_dir,elev_dir,smile = None,match=None,
         swir_obj = ht.HyTools()
         swir_obj.read_file(swir_temp, 'envi')
 
-        output_name = '%sNA-%s_%s_unprj' % (out_dir,base_name,measurement)
+        if project:
+            output_name = '%sPRISMA_%s_%s_unprj' % (temp_dir,base_name,measurement)
+        else:
+            output_name = '%sPRISMA_%s_%s_unprj' % (out_dir,base_name,measurement)
 
         rad_dict  = envi_header_dict()
         rad_dict ['lines']= vnir_obj.lines-4 #Clip edges of array
@@ -241,7 +242,7 @@ def he5_to_envi(base_name,in_dir,out_dir,elev_dir,smile = None,match=None,
     latitude= geo['Latitude'][2:-2,2:-2]
 
     #Create initial elevation raster
-    elevation= terrain_generate(longitude,latitude,elev_dir,temp_dir)
+    elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
 
     zone,direction = utm_zone(longitude,latitude)
 
@@ -254,11 +255,11 @@ def he5_to_envi(base_name,in_dir,out_dir,elev_dir,smile = None,match=None,
         project.create_tree(coords,easting.shape)
         project.query_tree(easting.min()-100,northing.max()+100,30)
 
-        sensor_az_prj = project.project(sensor_az,-9999)
-        sensor_zn_prj = project.project(sensor_zn,-9999)
-        elevation_prj = project.project(elevation.astype(np.float),-9999)
+        sensor_az_prj = project.project_band(sensor_az,-9999)
+        sensor_zn_prj = project.project_band(sensor_zn,-9999)
+        elevation_prj = project.project_band(elevation.astype(np.float),-9999)
 
-        rad_file = '%sNA-%s_rad_unprj' % (out_dir,base_name)
+        rad_file = '%sPRISMA_%s_rad_unprj' % (temp_dir,base_name)
         radiance = ht.HyTools()
         radiance.read_file(rad_file, 'envi')
 
@@ -266,7 +267,7 @@ def he5_to_envi(base_name,in_dir,out_dir,elev_dir,smile = None,match=None,
         warp_band = np.zeros(longitude.shape)
         for wave in range(850,890,10):
             warp_band += radiance.get_wave(wave)/7.
-        warp_band = project.project(warp_band,-9999)
+        warp_band = project.project_band(warp_band,-9999)
         warp_band = 16000*(warp_band-warp_band.min())/warp_band.max()
 
         #Calculate optimal shift
@@ -274,11 +275,16 @@ def he5_to_envi(base_name,in_dir,out_dir,elev_dir,smile = None,match=None,
                                       easting.min()-100,northing.max()+100,
                                       sensor_zn_prj,sensor_az_prj,elevation_prj)
 
+        #Apply uniform filter
+        smooth_elevation = uniform_filter(elevation,25)
+        smooth_az = uniform_filter(sensor_az,25)
+        smooth_zn = uniform_filter(sensor_zn,25)
+
         i,a,b,c = y_model
-        y_offset = i + a*sensor_zn +b*elevation + c*sensor_az
+        y_offset = i + a*smooth_zn +b*smooth_az + c*smooth_elevation
 
         i,a,b,c= x_model
-        x_offset = i + a*sensor_zn +b*elevation + c*sensor_az
+        x_offset = i + a*smooth_zn +b*smooth_az + c*smooth_elevation
 
         new_easting = easting+  30*x_offset
         new_northing = northing- 30*y_offset
@@ -287,9 +293,13 @@ def he5_to_envi(base_name,in_dir,out_dir,elev_dir,smile = None,match=None,
         longitude,latitude = utm2dd(new_easting,new_northing,zone,direction)
 
         #Recalculate elevation with new coordinates
-        elevation= terrain_generate(longitude,latitude,elev_dir,temp_dir)
+        elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
 
-    loc_file = '%sNA-%s_obs_unprj' % (out_dir,base_name)
+    if project:
+        loc_file = '%sPRISMA_%s_loc_unprj' % (temp_dir,base_name)
+    else:
+        loc_file = '%sPRISMA_%s_loc_unprj' % (out_dir,base_name)
+
     loc_export(loc_file,longitude,latitude,elevation)
 
     # Path length
@@ -358,16 +368,55 @@ def he5_to_envi(base_name,in_dir,out_dir,elev_dir,smile = None,match=None,
     phase += np.sin(np.radians(solar_zn))*np.sin(np.radians(solar_zn))*np.cos(np.radians(geom['Rel_Azimuth_Angle'][2:-2,2:-2]))
 
     # Export observable datacube
-    obs_file = '%sNA-%s_obs_unprj' % (out_dir,base_name)
+    if project:
+        obs_file = '%sPRISMA_%s_obs_unprj' % (temp_dir,base_name)
+    else:
+        obs_file = '%sPRISMA_%s_obs_unprj' % (out_dir,base_name)
+
     obs_export(obs_file,pathlength,sensor_az,sensor_zn,
                solar_az,solar_zn,phase,slope,aspect,
                cosine_i,utc_time)
 
+    if project:
 
+        #Create new projector with corrected coordinates
+        new_coords =np.concatenate([np.expand_dims(new_easting.flatten(),axis=1),
+                        np.expand_dims(new_northing.flatten(),axis=1)],axis=1)
 
+        project = Projector()
+        project.create_tree(new_coords,new_easting.shape)
+        project.query_tree(new_easting.min()-100,new_northing.max()+100,30)
 
+        blocksize = int(res/30)
+        map_info = ['UTM', 1, 1, new_easting.min()-100, new_northing.max()+100,res,
+                           res,zone,direction, 'WGS-84' , 'units=Meters']
+        out_cols = int(blocksize* (project.output_shape[1]//blocksize))
+        out_lines = int(blocksize* (project.output_shape[0]//blocksize))
 
+        print('Georeferencing datasets')
+        for file in file_suffixes:
+            print(file)
+            input_name = '%sPRISMA_%s_%s_unprj' % (temp_dir,base_name,file)
+            hy_obj = ht.HyTools()
+            hy_obj.read_file(input_name, 'envi')
+            iterator =hy_obj.iterate(by = 'band')
 
+            out_header = hy_obj.get_header()
+            out_header['lines']= project.output_shape[0]//blocksize
+            out_header['samples']=project.output_shape[1]//blocksize
+            out_header['data ignore value'] = -9999
+            out_header['map info'] = map_info
+
+            output_name = '%sPRISMA_%s_%s_geo' % (out_dir,base_name,file)
+            writer = WriteENVI(output_name,out_header)
+
+            while not iterator.complete:
+                band = project.project_band(iterator.read_next(),-9999)
+                band[band == -9999] = np.nan
+                band = np.nanmean(view_as_blocks(band[:out_lines,:out_cols], (blocksize,blocksize)),axis=(2,3))
+                band[band<0] = 0
+                band[np.isnan(band)] = -9999
+                writer.write_band(band,iterator.current_band)
 
 
 
