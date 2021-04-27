@@ -22,7 +22,7 @@ def loc_export(loc_file,longitude,latitude,elevation):
     writer.write_band(elevation,2)
 
 
-def obs_export(obs_file,pathlength,sensor_az,sensor_zn,solar_az,phase,slope,aspect,cosine_i,utc_time):
+def obs_export(obs_file,pathlength,sensor_az,sensor_zn,solar_az,solar_zn,phase,slope,aspect,cosine_i,utc_time):
     obs_header = envi_header_dict()
     obs_header['lines']= pathlength.shape[0]
     obs_header['samples']= pathlength.shape[1]
