@@ -9,14 +9,14 @@ Author: Adam Chlus
 import datetime as dt
 import os
 import zipfile
+import shutil
 import h5py
 import hytools as ht
+import pandas as pd
 from hytools.io.envi import WriteENVI,envi_header_dict
 from hytools.topo.topo import calc_cosine_i
 import numpy as np
-from rtree import index
 from scipy.interpolate import interp1d
-from scipy.spatial import cKDTree
 import pyproj
 from pysolar import solar
 from skimage.util import view_as_blocks
@@ -62,12 +62,20 @@ def he5_to_envi(base_name,l1_zip,l2c_zip,out_dir,elev_dir,temp_dir,
     # l1_zip  = '/data2/prisma/zip/PRS_L1_STD_OFFL_%s.zip'% base_name
     # l2c_zip  = '/data2/prisma/zip/PRS_L2C_STD_%s.zip' % base_name
     # out_dir = '/data1/temp//PRISMA/'
-    # temp_dir =  '/data1/temp//temp_PRISMA/'
+    # temp_dir =  '/data1/temp/'
     # smile = '%s/Dropbox/rs/sister/data/prisma/PRS_20200721104249_20200721104253_0001_smile' % home
     # match = '/data2/landsat/LC08_L2SP_115029_20190708_20200827_02_T1_SR_B5.TIF'
+    # match= None
     # rfl = False
     # project = True
     # res = 30
+
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+
+    temp_dir = '%s/DESIS_%s/'% (temp_dir,base_name)
+    if not os.path.isdir(temp_dir):
+        os.mkdir(temp_dir)
 
     for file in [l1_zip,l2c_zip]:
         zip_base  =os.path.basename(file)
@@ -286,11 +294,11 @@ def he5_to_envi(base_name,l1_zip,l2c_zip,out_dir,elev_dir,temp_dir,
         i,a,b,c= x_model
         x_offset = i + a*smooth_zn +b*smooth_az + c*smooth_elevation
 
-        new_easting = easting+  30*x_offset
-        new_northing = northing- 30*y_offset
+        easting = easting+  30*x_offset
+        northing = northing- 30*y_offset
 
         zone,direction = utm_zone(longitude,latitude)
-        longitude,latitude = utm2dd(new_easting,new_northing,zone,direction)
+        longitude,latitude = utm2dd(easting,northing,zone,direction)
 
         #Recalculate elevation with new coordinates
         elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
@@ -357,6 +365,20 @@ def he5_to_envi(base_name,l1_zip,l2c_zip,out_dir,elev_dir,temp_dir,
         satelite_xyz.append(sat_interp)
     pathlength = np.sqrt(pathlength)
 
+
+    # Export satellite position to csv
+    lon,lat,alt = pyproj.transform(ecef,lla,
+                                satelite_xyz[0],
+                                satelite_xyz[1],
+                                satelite_xyz[2],
+                                radians=False)
+    satellite_df = pd.DataFrame()
+    satellite_df['lat'] = lat
+    satellite_df['lon'] = lon
+    satellite_df['alt'] = alt
+    satellite_df.to_csv('%sPRISMA_%s_satellite_loc.csv' % (out_dir,base_name))
+
+
     slope,aspect = slope_aspect(elevation,temp_dir)
 
     cosine_i = calc_cosine_i(np.radians(solar_zn),
@@ -380,15 +402,15 @@ def he5_to_envi(base_name,l1_zip,l2c_zip,out_dir,elev_dir,temp_dir,
     if project:
 
         #Create new projector with corrected coordinates
-        new_coords =np.concatenate([np.expand_dims(new_easting.flatten(),axis=1),
-                        np.expand_dims(new_northing.flatten(),axis=1)],axis=1)
+        new_coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
+                        np.expand_dims(northing.flatten(),axis=1)],axis=1)
 
         project = Projector()
-        project.create_tree(new_coords,new_easting.shape)
-        project.query_tree(new_easting.min()-100,new_northing.max()+100,30)
+        project.create_tree(new_coords,easting.shape)
+        project.query_tree(easting.min()-100,northing.max()+100,30)
 
         blocksize = int(res/30)
-        map_info = ['UTM', 1, 1, new_easting.min()-100, new_northing.max()+100,res,
+        map_info = ['UTM', 1, 1, easting.min()-100, northing.max()+100,res,
                            res,zone,direction, 'WGS-84' , 'units=Meters']
         out_cols = int(blocksize* (project.output_shape[1]//blocksize))
         out_lines = int(blocksize* (project.output_shape[0]//blocksize))
@@ -419,13 +441,4 @@ def he5_to_envi(base_name,l1_zip,l2c_zip,out_dir,elev_dir,temp_dir,
                 writer.write_band(band,iterator.current_band)
 
 
-
-
-
-
-
-
-
-
-
-
+    shutil.rmtree(temp_dir)

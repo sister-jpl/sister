@@ -10,36 +10,32 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import gdal
 import hytools as ht
-from hytools.io.envi import WriteENVI,envi_header_dict
 import pyproj
-import argparse
 import datetime as dt
-import glob
 import os
 import zipfile
-
-import h5py
+import shutil
+import pandas as pd
 import hytools as ht
 from hytools.io.envi import WriteENVI,envi_header_dict
-from hytools.misc import progbar
 from hytools.topo.topo import calc_cosine_i
-import numpy as np
-from rtree import index
 from scipy.interpolate import interp1d
-from scipy.spatial import cKDTree
-import pyproj
 from pysolar import solar
-from skimage.util import view_as_blocks
 from scipy.interpolate import griddata
 from scipy.optimize import curve_fit
-
+from skimage.util import view_as_blocks
+from scipy.ndimage import uniform_filter
+from ..utils.terrain import *
+from ..utils.geometry import *
+from ..utils.ancillary import *
 
 
 def gaussian(x, mu, fwhm):
     sig = fwhm/(2* np.sqrt(2*np.log(2)))
     return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
-def desis_to_envi():
+def desis_to_envi(base_name,l1b_zip,l1c_zip,out_dir,elev_dir,temp_dir,
+                  match=None,project = True, res = 30):
     '''
     This function exports a PRISMA L1 radiance products to an ENVI formatted
     binary file along with ancillary datasets including location data and geometry.
@@ -47,28 +43,39 @@ def desis_to_envi():
     '''
 
     #Testing
-    elev_dir = '/data2/cop_dsm/'
-    l1_dir  = '/data2/desis/l1b/'
-    l2_dir = '/data2/desis/l1c/'
-    base_name = "DT0488344520_005-20200818T141910"
-    out_dir = '/data2/desis/envi/DESIS_%s/' % base_name
-    temp_dir = '/data2/temp/desis/'
-    match = '/data2/landsat/LC08_L2SP_025028_20200617_20200824_02_T1_SR_B5.TIF'
-    rfl = False
-    project = True
-    res = 30
+    # elev_dir = '/data2/cop_dsm/'
+    # base_name = "DT0488344520_005-20200818T141910"
+    # l1b_zip = '/data2/desis/zip/DESIS-HSI-L1B-%s-V0210.zip' %  base_name
+    # l1c_zip = '/data2/desis/zip/DESIS-HSI-L1C-%s-V0210.zip' % base_name
+    # out_dir = '/data2/desis/envi/DESIS_%s/' % base_name
+    # temp_dir = '/data2/temp/'
+    # match = '/data2/landsat/LC08_L2SP_025028_20200617_20200824_02_T1_SR_B5.TIF'
+    # rfl = False
+    # project = True
+    # res = 30
 
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
 
+    temp_dir = '%s/DESIS_%s/'% (temp_dir,base_name)
     if not os.path.isdir(temp_dir):
         os.mkdir(temp_dir)
 
-    l1b_file = gdal.Open('%s/DESIS-HSI-L1B-%s/DESIS-HSI-L1B-%s-V0210-SPECTRAL_IMAGE.tif' % (l1_dir,base_name,base_name))
-    l1c_file = gdal.Open('%s/DESIS-HSI-L1C-%s/DESIS-HSI-L1C-%s-V0210-SPECTRAL_IMAGE.tif' % (l2_dir,base_name,base_name))
+    for file in [l1b_zip,l1c_zip]:
+        zip_base  =os.path.basename(file)
+        print('Unzipping %s' % zip_base)
+        with zipfile.ZipFile(file,'r') as zipped:
+            zipped.extractall(temp_dir)
+
+    l1  = '%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name)
+    l2c  = '%sPRS_L2C_STD_%s.he5' % (temp_dir,base_name)
+
+
+    l1b_file = gdal.Open('%s/DESIS-HSI-L1B-%s-V0210-SPECTRAL_IMAGE.tif' % (temp_dir,base_name))
+    l1c_file = gdal.Open('%s/DESIS-HSI-L1C-%s-V0210-SPECTRAL_IMAGE.tif' % (temp_dir,base_name))
 
     # Parse relevant metadata from XML file, assume metadata are in same directory as iamges
-    tree = ET.parse('%s/DESIS-HSI-L1B-%s/DESIS-HSI-L1B-%s-V0210-METADATA.xml' % (l1_dir,base_name,base_name))
+    tree = ET.parse('%s/DESIS-HSI-L1B-%s-V0210-METADATA.xml' % (temp_dir,base_name))
     root = tree.getroot()
     specific =  root[3]
     band_meta = {}
@@ -411,7 +418,7 @@ def desis_to_envi():
         out_lines = int(blocksize* (project.output_shape[0]//blocksize))
 
         print('Georeferencing datasets')
-        for file in file_suffixes:
+        for file in ['rad','loc','obs']:
             print(file)
             input_name = '%sDESIS_%s_%s_unprj' % (temp_dir,base_name,file)
             hy_obj = ht.HyTools()
@@ -435,3 +442,4 @@ def desis_to_envi():
                 band[np.isnan(band)] = -9999
                 writer.write_band(band,iterator.current_band)
 
+    shutil.rmtree(temp_dir)
