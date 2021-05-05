@@ -8,15 +8,16 @@ setup(
     url='https://github.com/EnSpec/hytools',
     author = 'Adam Chlus',
     packages=find_packages(),
-    install_requires=['h5py',
-                      'pyproj',
+    install_requires=['gdal',
+                      'h5py',
+                      'hy-tools',
                       'numpy',
-                      'pandas',
                       'ray',
-                      'scikit-learn',
+                      'rtree',
+                      'pandas',
+                      'pyproj',
+                      'skimage',
                       'scipy',
-                      'hy-tools'],
+                      'statsmodels'],
     python_requires='>=3.6, !=3.9.*'
     )
-
-
