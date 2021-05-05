@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Apr 26 10:01:27 2021
+SISTER
+Space-based Imaging Spectroscopy and Thermal PathfindER
+Author: Adam Chlus
 
-@author: adam
 """
+import logging
+from hytools.io.envi import WriteENVI,envi_header_dict
+
 
 def loc_export(loc_file,longitude,latitude,elevation):
+    '''Export location datasets to disk
+    '''
     loc_header = envi_header_dict()
     loc_header['lines']= longitude.shape[0]
     loc_header['samples']= longitude.shape[1]
@@ -23,6 +29,8 @@ def loc_export(loc_file,longitude,latitude,elevation):
 
 
 def obs_export(obs_file,pathlength,sensor_az,sensor_zn,solar_az,solar_zn,phase,slope,aspect,cosine_i,utc_time):
+    '''Export observables datasets to disk
+    '''
     obs_header = envi_header_dict()
     obs_header['lines']= pathlength.shape[0]
     obs_header['samples']= pathlength.shape[1]

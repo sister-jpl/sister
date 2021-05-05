@@ -8,12 +8,12 @@ Author: Adam Chlus
 import os
 import glob
 import tarfile
+import logging
 import numpy as np
 import hytools as ht
 from hytools.io.envi import WriteENVI,envi_header_dict
 from rtree import index
 from scipy.spatial import cKDTree
-
 
 def dem_generate(longitude,latitude,elev_dir,temp_dir):
     '''
@@ -51,13 +51,13 @@ def dem_generate(longitude,latitude,elev_dir,temp_dir):
     tiles_inter = [tiles[n] for n in idx.intersection((lon_min, lat_min, lon_max, lat_max))]
 
     if len(tiles_inter) > 0:
-        print("\nIntersecting elevation tiles:")
+        tile_string = "Found %s intersecting elevation tiles:" % len(tiles_inter)
         for tile in tiles_inter:
-            print('\t' + os.path.basename(tile))
+            tile_string+= '\n\t%s' % tile
             with tarfile.open(tile, 'r') as tar_ref:
                 tar_ref.extractall(temp_dir)
-
-        print('Merging DEM tiles')
+        logging.info(tile_string)
+        logging.info('Merging DEM tiles')
         dem_file  = '%stemp_dem' % temp_dir
         os.system('gdal_merge.py -o %s -of ENVI %s*.dt2' % (dem_file,temp_dir))
 
@@ -81,30 +81,33 @@ def dem_generate(longitude,latitude,elev_dir,temp_dir):
         dem_lon = (lon_min+ dem_lon*pix).flatten()
 
         #Create spatial index and nearest neighbor sample
-        src_points =np.concatenate([np.expand_dims(dem_lon,axis=1),np.expand_dims(dem_lat,axis=1)],axis=1)
+        src_points =np.concatenate([np.expand_dims(dem_lon,axis=1),
+                                    np.expand_dims(dem_lat,axis=1)],axis=1)
         tree = cKDTree(src_points,balanced_tree= False)
 
         dst_points = np.concatenate([longitude.flatten()[:,np.newaxis],
                                      latitude.flatten()[:,np.newaxis]],
                                      axis=1)
 
-        dists, indexes = tree.query(dst_points,k=1)
+        indexes = tree.query(dst_points,k=1)[1]
         indices_int = np.unravel_index(indexes,(dem_subset.shape[0],
                                                 dem_subset.shape[1]))
         elevation = dem_subset[indices_int[0],indices_int[1]].reshape(longitude.shape)
 
     else:
-        constant_elev = float(input("\nNo overlapping tiles found, enter constant elevation for scene (m): "))
+        constant_elev = float(input("No overlapping tiles found, enter constant elevation for scene (m): "))
         elevation = np.ones(longitude.shape.shape) * constant_elev
 
     #Set negative elevations to 0
     if np.sum(elevation<0) > 0:
-        print('Elevations below sea level found, setting to 0m')
+        logging.warning('Elevations below sea level found, setting to 0m')
         elevation[elevation<0] =0
 
     return elevation
 
 def slope_aspect(elevation,temp_dir):
+    ''' Use GDAL to calculte slope and aspect
+    '''
 
     dem_dict  = envi_header_dict()
     dem_dict ['lines']= elevation.shape[0]
@@ -120,10 +123,10 @@ def slope_aspect(elevation,temp_dir):
     slope_file =  '%s_slope' % temp_dir
     aspect_file =  '%s_aspect' % temp_dir
 
-    print('Calculating slope')
+    logging.info('Calculating slope')
     os.system('gdaldem slope -of ENVI %s %s'% (dem_file,slope_file))
 
-    print('Calculating aspect')
+    logging.info('Calculating aspect')
     os.system('gdaldem aspect -f ENVI %s %s' % (dem_file,aspect_file))
 
     asp_obj = ht.HyTools()
@@ -135,13 +138,3 @@ def slope_aspect(elevation,temp_dir):
     slope =slp_obj.get_band(0)
 
     return slope,aspect
-
-
-
-
-
-
-
-
-
-
