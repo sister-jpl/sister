@@ -7,6 +7,7 @@ Author: Adam Chlus
 """
 
 import datetime as dt
+import logging
 import os
 import zipfile
 import shutil
@@ -28,12 +29,13 @@ from ..utils.ancillary import *
 
 home = os.path.expanduser("~")
 
-def he5_to_envi(base_name,l1_zip,l2c_zip,out_dir,elev_dir,temp_dir,
-                smile = None,match=None,rfl = False, project = True, res = 30):
+def he5_to_envi(l1_zip,l2c_zip,out_dir,temp_dir,elev_dir,
+                smile = None,match=None,rfl = False, project = True,
+                res = 30):
     '''
-    This function exports three unprojected files:
-        *_rad_unpj : Merged and optionaly smile corrected radiance cube
-        *_obs_unprj : Observables file in the format of JPL obs files:
+    This function exports three files:
+        *_rad* : Merged and optionally smile corrected radiance cube
+        *_obs* : Observables file in the format of JPL obs files:
                 1. Pathlength (m)
                 2. Sensor view azimuth angle (degrees)
                 3. Sensor view zenith angle (degrees)
@@ -41,45 +43,36 @@ def he5_to_envi(base_name,l1_zip,l2c_zip,out_dir,elev_dir,temp_dir,
                 5. Solar zenith angle (degrees)
                 6. Sensor view azimuth angle in degrees
                 7. Sensor view azimuth angle in degrees
-        *_loc_unprj : Location file in the following format:
+        *_loc* : Location file in the following format:
                 1. Longitude (decimal degrees)
                 2. Longitude (decimal degrees)
                 3. Elevation (m)
 
-    l1(str): L1 zipped data product path
-    l2(str): L2C zipped data product path
-    base_name :
+    l1(str): L1 zipped radiance data product path
+    l2(str): L2C zipped reflectance data product path
     out_dir(str): Output directory of ENVI datasets
+    temp_dir(str): Temporary directory for intermediate
     elev_dir (str): Directory zipped elevation tiles
     smile (str) : Pathname of smile correction surface file
     match (str or list) : Pathname to Landsat image(s) for image re-registration (recommended)
     rfl (bool) : Export ASI L2C surface reflectance
+    project (bool) : Project image to UTM grid
+    res (int) : Resolution of projected image, 30 should be one of its factors
+
     '''
 
-    # home = os.path.expanduser("~")
-    # elev_dir = '/data2/cop_dsm/'
-    # base_name = "20200703022145_20200703022149_0001"
-    # l1_zip  = '/data2/prisma/zip/PRS_L1_STD_OFFL_%s.zip'% base_name
-    # l2c_zip  = '/data2/prisma/zip/PRS_L2C_STD_%s.zip' % base_name
-    # out_dir = '/data1/temp//PRISMA/'
-    # temp_dir =  '/data1/temp/'
-    # smile = '%s/Dropbox/rs/sister/data/prisma/PRS_20200721104249_20200721104253_0001_smile' % home
-    # match = '/data2/landsat/LC08_L2SP_115029_20190708_20200827_02_T1_SR_B5.TIF'
-    # match= None
-    # rfl = False
-    # project = True
-    # res = 30
+    base_name = os.path.basename(l1_zip)[16:-4]
 
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
 
-    temp_dir = '%s/DESIS_%s/'% (temp_dir,base_name)
+    temp_dir = '%s/PRISMA_%s/'% (temp_dir,base_name)
     if not os.path.isdir(temp_dir):
         os.mkdir(temp_dir)
 
     for file in [l1_zip,l2c_zip]:
         zip_base  =os.path.basename(file)
-        print('Unzipping %s' % zip_base)
+        logging.info('Unzipping %s' % zip_base)
         with zipfile.ZipFile(file,'r') as zipped:
             zipped.extractall(temp_dir)
 
@@ -101,13 +94,13 @@ def he5_to_envi(base_name,l1_zip,l2c_zip,out_dir,elev_dir,temp_dir,
         if 'L2C' in subdir:
             if not rfl:
                 continue
-            print('Exporting reflectance data')
+            logging.info('Exporting reflectance data')
             measurement = 'rfl'
             file_suffixes.append(measurement)
 
         else:
             measurement = 'rad'
-            print('Exporting radiance data')
+            logging.info('Exporting radiance data')
 
         # Export VNIR to temporary ENVI
         vnir_data =  l_obj['HDFEOS']["SWATHS"][subdir]['Data Fields']['VNIR_Cube']
@@ -415,9 +408,8 @@ def he5_to_envi(base_name,l1_zip,l2c_zip,out_dir,elev_dir,temp_dir,
         out_cols = int(blocksize* (project.output_shape[1]//blocksize))
         out_lines = int(blocksize* (project.output_shape[0]//blocksize))
 
-        print('Georeferencing datasets')
+        logging.info('Georeferencing datasets to %sm resolution' % res)
         for file in file_suffixes:
-            print(file)
             input_name = '%sPRISMA_%s_%s_unprj' % (temp_dir,base_name,file)
             hy_obj = ht.HyTools()
             hy_obj.read_file(input_name, 'envi')
