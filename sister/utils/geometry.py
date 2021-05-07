@@ -80,11 +80,15 @@ def utm_zone(longitude, latitude):
     return zone,direction
 
 
-def dd2utm(longitude,latitude):
-    '''Convert coordinates in decimal degrees int
+def dda2utm(longitude,latitude,altitude,zn_dir =None):
+    '''Convert coordinates in decimal degrees into
     UTM eastings and northings
     '''
-    zone,direction = utm_zone(longitude, latitude)
+
+    if zn_dir:
+        zone,direction =zn_dir
+    else:
+        zone,direction = utm_zone(longitude, latitude)
 
     if direction == 'N':
         epsg_dir = 6
@@ -95,8 +99,41 @@ def dd2utm(longitude,latitude):
     in_crs= pyproj.Proj("+init=EPSG:4326")
 
     # Convert to easting and northing,
-    easting,northing = pyproj.transform(in_crs,out_crs,longitude,latitude)
-    return easting,northing
+    easting,northing,up = pyproj.transform(in_crs,out_crs,
+                                           longitude,
+                                           latitude,
+                                           altitude)
+    return easting,northing,up
+
+
+def dda2ecef(longitude,latitude,altitude):
+    '''Convert longitude,latitude and altitude to Earth Centered Earth Fixed
+    coordinates (x,y,x)
+
+    '''
+    in_crs = pyproj.Proj(proj='latlong', ellps='WGS84', datum='WGS84')
+    out_crs = pyproj.Proj(proj='geocent', ellps='WGS84', datum='WGS84')
+
+    x, y, z = pyproj.transform(in_crs, out_crs,
+                               longitude,
+                               latitude,
+                               altitude, radians=False)
+    return x,y,z
+
+def ecef2dda(x,y,z):
+    '''Convert Earth Centered Earth Fixed
+    coordinates (x,y,z) to longitude,latitude and altitude
+
+    '''
+    in_crs = pyproj.Proj(proj='geocent', ellps='WGS84', datum='WGS84')
+    out_crs = pyproj.Proj(proj='latlong', ellps='WGS84', datum='WGS84')
+
+    lon, lat, alt = pyproj.transform(in_crs, out_crs,
+                               x,
+                               y,
+                               z, radians=False)
+    return lon, lat, alt
+
 
 
 def utm2dd(easting,northing,zone,direction):
@@ -163,7 +200,8 @@ def image_match(ref_file,warp_band,ulx,uly,sensor_zn_prj,sensor_az_prj,elevation
     Args:
         ref_file (str): Landsat B5 (850nm) pathanem.
         warp_band (np.array): Projected band to be warped.
-        map_info (list): Map info list for warp band.
+        ulx (float): Upper left easting coordinate
+        uly (float): Upper left northing coordinate
         sensor_zn_prj (np.array): Projected sensor zennith array.
         sensor_az_prj (np.array): Projected sensor azimuth array.
         elevation_prj_prj (np.array): Projected elevation array.
@@ -227,14 +265,14 @@ def image_match(ref_file,warp_band,ulx,uly,sensor_zn_prj,sensor_az_prj,elevation
 
     ray.shutdown()
 
-    #Calculate shift slopes
+    # Calculate shift slopes
     px, py = np.gradient(shift_surf[:,:,0])
     slope_y = np.sqrt(px ** 2 + py ** 2)
 
     px, py = np.gradient(shift_surf[:,:,1])
     slope_x = np.sqrt(px ** 2 + py ** 2)
 
-    #Mask
+    # Mask
     corr_thres = .4
     mask = (slope_y==0) & (corr_surf  > corr_thres) & (slope_x==0)
 
@@ -251,3 +289,35 @@ def image_match(ref_file,warp_band,ulx,uly,sensor_zn_prj,sensor_az_prj,elevation
     logging.info(model_y.summary())
 
     return (model_y.params,model_x.params)
+
+def pathlength(sat_xyz,grd_xyz):
+    '''Calculate pathlength from satellite
+    to ground
+
+    '''
+    return np.linalg.norm(sat_xyz[:,np.newaxis]-grd_xyz,axis=0)
+
+
+def sensor_view_angles(sat_enu,grd_enu):
+    '''Calculates sensor zenith and azimuth angle
+    in degrees
+    '''
+
+    p = (sat_enu[:,np.newaxis]-grd_enu)/pathlength(sat_enu,grd_enu)
+    sensor_zn = 90-np.degrees(np.arcsin(p[2]))
+    sensor_az = np.degrees(np.arctan(p[0]/p[1]))
+
+    DX,DY,DZ= grd_enu - sat_enu[:,np.newaxis]
+
+    sensor_az[DY>0]= -sensor_az[DY>0]
+    sensor_az = 180+sensor_az
+
+    return sensor_zn,sensor_az
+
+
+
+
+
+
+
+
