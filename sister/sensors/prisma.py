@@ -29,7 +29,7 @@ from ..utils.ancillary import *
 
 home = os.path.expanduser("~")
 
-def he5_to_envi(l1_zip,l2c_zip,out_dir,temp_dir,elev_dir,
+def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
                 smile = None,match=None,rfl = False, project = True,
                 res = 30):
     '''
@@ -55,7 +55,6 @@ def he5_to_envi(l1_zip,l2c_zip,out_dir,temp_dir,elev_dir,
     elev_dir (str): Directory zipped elevation tiles
     smile (str) : Pathname of smile correction surface file
     match (str or list) : Pathname to Landsat image(s) for image re-registration (recommended)
-    rfl (bool) : Export ASI L2C surface reflectance
     project (bool) : Project image to UTM grid
     res (int) : Resolution of projected image, 30 should be one of its factors
 
@@ -70,14 +69,12 @@ def he5_to_envi(l1_zip,l2c_zip,out_dir,temp_dir,elev_dir,
     if not os.path.isdir(temp_dir):
         os.mkdir(temp_dir)
 
-    for file in [l1_zip,l2c_zip]:
-        zip_base  =os.path.basename(file)
-        logging.info('Unzipping %s' % zip_base)
-        with zipfile.ZipFile(file,'r') as zipped:
-            zipped.extractall(temp_dir)
+    zip_base  =os.path.basename(l1_zip)
+    logging.info('Unzipping %s' % zip_base)
+    with zipfile.ZipFile(l1_zip,'r') as zipped:
+        zipped.extractall(temp_dir)
 
-    l1  = '%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name)
-    l2c  = '%sPRS_L2C_STD_%s.he5' % (temp_dir,base_name)
+    l1_obj  = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
 
     file_suffixes =  ['rad','loc','obs']
 
@@ -87,115 +84,103 @@ def he5_to_envi(l1_zip,l2c_zip,out_dir,temp_dir,elev_dir,
         shift_surf_smooth = smile_obj.get_band(0)
         smile_correct = True
 
-    for product in [l1,l2c]:
-        l_obj = h5py.File(product,'r')
-        subdir = [x for x in l_obj['HDFEOS']["SWATHS"].keys() if 'HCO' in x][0]
 
-        if 'L2C' in subdir:
-            if not rfl:
-                continue
-            logging.info('Exporting reflectance data')
-            measurement = 'rfl'
-            file_suffixes.append(measurement)
+    measurement = 'rad'
+    logging.info('Exporting radiance data')
 
-        else:
-            measurement = 'rad'
-            logging.info('Exporting radiance data')
+    # Export VNIR to temporary ENVI
+    vnir_data =  l1_obj['HDFEOS']["SWATHS"]['PRS_L1_HCO']['Data Fields']['VNIR_Cube']
+    vnir_waves = l1_obj.attrs.get('List_Cw_Vnir')
+    vnir_fwhm = l1_obj.attrs.get('List_Fwhm_Vnir')
 
-        # Export VNIR to temporary ENVI
-        vnir_data =  l_obj['HDFEOS']["SWATHS"][subdir]['Data Fields']['VNIR_Cube']
-        vnir_waves = l_obj.attrs.get('List_Cw_Vnir')
-        vnir_fwhm = l_obj.attrs.get('List_Fwhm_Vnir')
+    rad_dict = envi_header_dict ()
+    rad_dict['lines']= vnir_data.shape[0]
+    rad_dict['samples']= vnir_data.shape[2]
+    rad_dict['bands']=  vnir_data.shape[1]
+    rad_dict['wavelength']= vnir_waves
+    rad_dict['fwhm']= vnir_fwhm
+    rad_dict['interleave']= 'bsq'
+    rad_dict['data type'] = 12
+    rad_dict['wavelength units'] = "nanometers"
+    rad_dict['byte order'] = 0
+    vnir_temp = '%sPRISMA_-%s_%s_vnir' % (temp_dir,base_name,measurement)
 
-        rad_dict = envi_header_dict ()
-        rad_dict['lines']= vnir_data.shape[0]
-        rad_dict['samples']= vnir_data.shape[2]
-        rad_dict['bands']=  vnir_data.shape[1]
-        rad_dict['wavelength']= vnir_waves
-        rad_dict['fwhm']= vnir_fwhm
-        rad_dict['interleave']= 'bsq'
-        rad_dict['data type'] = 12
-        rad_dict['wavelength units'] = "nanometers"
-        rad_dict['byte order'] = 0
-        vnir_temp = '%sPRISMA_-%s_%s_vnir' % (temp_dir,base_name,measurement)
+    writer = WriteENVI(vnir_temp,rad_dict )
+    writer.write_chunk(np.moveaxis(vnir_data[:,:,:],1,2), 0,0)
 
-        writer = WriteENVI(vnir_temp,rad_dict )
-        writer.write_chunk(np.moveaxis(vnir_data[:,:,:],1,2), 0,0)
+    # Export SWIR to temporary ENVI
+    swir_data =  l1_obj['HDFEOS']["SWATHS"]['PRS_L1_HCO']['Data Fields']['SWIR_Cube']
+    swir_waves = l1_obj.attrs.get('List_Cw_Swir')
+    swir_fwhm = l1_obj.attrs.get('List_Fwhm_Swir')
 
-        # Export SWIR to temporary ENVI
-        swir_data =  l_obj['HDFEOS']["SWATHS"][subdir]['Data Fields']['SWIR_Cube']
-        swir_waves = l_obj.attrs.get('List_Cw_Swir')
-        swir_fwhm = l_obj.attrs.get('List_Fwhm_Swir')
+    rad_dict = envi_header_dict ()
+    rad_dict['lines']= swir_data.shape[0]
+    rad_dict['samples']= swir_data.shape[2]
+    rad_dict['bands']=  swir_data.shape[1]
+    rad_dict['wavelength']= swir_waves
+    rad_dict['fwhm']= swir_fwhm
+    rad_dict['interleave']= 'bil'
+    rad_dict['data type'] = 12
+    rad_dict['wavelength units'] = "nanometers"
+    rad_dict['byte order'] = 0
+    swir_temp = '%sPRISMA_%s_%s_swir' % (temp_dir,base_name,measurement)
 
-        rad_dict = envi_header_dict ()
-        rad_dict['lines']= swir_data.shape[0]
-        rad_dict['samples']= swir_data.shape[2]
-        rad_dict['bands']=  swir_data.shape[1]
-        rad_dict['wavelength']= swir_waves
-        rad_dict['fwhm']= swir_fwhm
-        rad_dict['interleave']= 'bil'
-        rad_dict['data type'] = 12
-        rad_dict['wavelength units'] = "nanometers"
-        rad_dict['byte order'] = 0
-        swir_temp = '%sPRISMA_%s_%s_swir' % (temp_dir,base_name,measurement)
+    writer = WriteENVI(swir_temp,rad_dict )
+    writer.write_chunk(np.moveaxis(swir_data[:,:,:],1,2), 0,0)
 
-        writer = WriteENVI(swir_temp,rad_dict )
-        writer.write_chunk(np.moveaxis(swir_data[:,:,:],1,2), 0,0)
+    vnir_waves = np.flip(vnir_waves[6:])
+    swir_waves = np.flip(swir_waves[:-3])
 
-        vnir_waves = np.flip(vnir_waves[6:])
-        swir_waves = np.flip(swir_waves[:-3])
+    vnir_fwhm = np.flip(vnir_fwhm[6:])
+    swir_fwhm = np.flip(swir_fwhm[:-3])
 
-        vnir_fwhm = np.flip(vnir_fwhm[6:])
-        swir_fwhm = np.flip(swir_fwhm[:-3])
+    vnir_obj = ht.HyTools()
+    vnir_obj.read_file(vnir_temp, 'envi')
 
-        vnir_obj = ht.HyTools()
-        vnir_obj.read_file(vnir_temp, 'envi')
+    swir_obj = ht.HyTools()
+    swir_obj.read_file(swir_temp, 'envi')
 
-        swir_obj = ht.HyTools()
-        swir_obj.read_file(swir_temp, 'envi')
+    if project:
+        output_name = '%sPRISMA_%s_%s_unprj' % (temp_dir,base_name,measurement)
+    else:
+        output_name = '%sPRISMA_%s_%s_unprj' % (out_dir,base_name,measurement)
 
-        if project:
-            output_name = '%sPRISMA_%s_%s_unprj' % (temp_dir,base_name,measurement)
-        else:
-            output_name = '%sPRISMA_%s_%s_unprj' % (out_dir,base_name,measurement)
+    rad_dict  = envi_header_dict()
+    rad_dict ['lines']= vnir_obj.lines-4 #Clip edges of array
+    rad_dict ['samples']=vnir_obj.columns-4  #Clip edges of array
+    rad_dict ['bands']= len(vnir_waves.tolist() + swir_waves.tolist())
+    rad_dict ['wavelength']= vnir_waves.tolist() + swir_waves.tolist()
+    rad_dict ['fwhm']= vnir_fwhm.tolist() + swir_fwhm.tolist()
+    rad_dict ['interleave']= 'bil'
+    rad_dict ['data type'] = 4
+    rad_dict ['wavelength units'] = "nanometers"
+    rad_dict ['byte order'] = 0
 
-        rad_dict  = envi_header_dict()
-        rad_dict ['lines']= vnir_obj.lines-4 #Clip edges of array
-        rad_dict ['samples']=vnir_obj.columns-4  #Clip edges of array
-        rad_dict ['bands']= len(vnir_waves.tolist() + swir_waves.tolist())
-        rad_dict ['wavelength']= vnir_waves.tolist() + swir_waves.tolist()
-        rad_dict ['fwhm']= vnir_fwhm.tolist() + swir_fwhm.tolist()
-        rad_dict ['interleave']= 'bil'
-        rad_dict ['data type'] = 4
-        rad_dict ['wavelength units'] = "nanometers"
-        rad_dict ['byte order'] = 0
+    writer = WriteENVI(output_name,rad_dict)
+    iterator_v =vnir_obj.iterate(by = 'line')
+    iterator_s =swir_obj.iterate(by = 'line')
 
-        writer = WriteENVI(output_name,rad_dict)
-        iterator_v =vnir_obj.iterate(by = 'line')
-        iterator_s =swir_obj.iterate(by = 'line')
+    while not iterator_v.complete:
+        chunk_v = iterator_v.read_next()[:,6:]
+        chunk_v =np.flip(chunk_v,axis=1)
+        chunk_s = iterator_s.read_next()[:,:-3]
+        chunk_s =np.flip(chunk_s,axis=1)
 
-        while not iterator_v.complete:
-            chunk_v = iterator_v.read_next()[:,6:]
-            chunk_v =np.flip(chunk_v,axis=1)
-            chunk_s = iterator_s.read_next()[:,:-3]
-            chunk_s =np.flip(chunk_s,axis=1)
+        if (iterator_v.current_line >=2) and (iterator_v.current_line <= 997):
+            if (measurement == 'rad') & smile_correct:
+                vnir_interpolator = interp1d(shift_surf_smooth[iterator_v.current_line,:60],
+                                               chunk_v,fill_value = "extrapolate",kind='cubic')
+                chunk_v = vnir_interpolator(vnir_waves)
+                swir_interpolator = interp1d(shift_surf_smooth[iterator_v.current_line,60:],
+                                               chunk_s,fill_value = "extrapolate",kind='cubic')
+                chunk_s = swir_interpolator(swir_waves)
 
-            if (iterator_v.current_line >=2) and (iterator_v.current_line <= 997):
-                if (measurement == 'rad') & smile_correct:
-                    vnir_interpolator = interp1d(shift_surf_smooth[iterator_v.current_line,:60],
-                                                   chunk_v,fill_value = "extrapolate",kind='cubic')
-                    chunk_v = vnir_interpolator(vnir_waves)
-                    swir_interpolator = interp1d(shift_surf_smooth[iterator_v.current_line,60:],
-                                                   chunk_s,fill_value = "extrapolate",kind='cubic')
-                    chunk_s = swir_interpolator(swir_waves)
-
-                line = np.concatenate([chunk_v,chunk_s],axis=1)/1000.
-                writer.write_line(line[2:-2,:], iterator_v.current_line-2)
+            line = np.concatenate([chunk_v,chunk_s],axis=1)/1000.
+            writer.write_line(line[2:-2,:], iterator_v.current_line-2)
 
     #Load ancillary datasets
-    geo =  l_obj['HDFEOS']["SWATHS"][subdir]['Geolocation Fields']
-    geom = l_obj['HDFEOS']['SWATHS'][subdir]['Geometric Fields']
-    pvs =  l_obj['Info']["Ancillary"]['PVSdata']
+    geo =  l1_obj['HDFEOS']["SWATHS"]['PRS_L1_HCO']['Geolocation Fields']
+    pvs =  l1_obj['Info']["Ancillary"]['PVSdata']
 
     # Time
     '''1. Convert from MJD2000 to UTC hours
@@ -217,12 +202,7 @@ def he5_to_envi(l1_zip,l2c_zip,out_dir,temp_dir,elev_dir,
 
     v_dhour = np.vectorize(dhour)
     utc_time = v_dhour(np.array(geo['Time'][:]))
-
-    utc_time = np.array(utc_time)
-    X = np.concatenate([np.arange(1000)[:,np.newaxis], np.ones(utc_time.shape)],axis=1)
-    slope, intercept = np.linalg.lstsq(X,utc_time,rcond=-1)[0].flatten()
-    utc_t_linear = slope*np.arange(1000)+ intercept
-    utc_time = np.ones(geo['Longitude'][:,:].shape[0]) *utc_t_linear[:,np.newaxis]
+    utc_time = np.ones(geo['Longitude_VNIR'][:,:].shape[0]) *utc_time[:,np.newaxis]
     utc_time = utc_time[2:-2,2:-2]
 
     # Solar geometries
@@ -230,25 +210,100 @@ def he5_to_envi(l1_zip,l2c_zip,out_dir,temp_dir,elev_dir,
     which varies by less than 5 seconds from start to end of the scene and is
     computationally more efficient.
     '''
-    epoch = dt.datetime(2000,1, 1,)
-    epoch = epoch.replace(tzinfo=dt.timezone.utc)
-    time = epoch + dt.timedelta(days=np.array(geo['Time'][:]).mean())
+    mjd2000_epoch = dt.datetime(2000,1, 1,)
+    mjd2000_epoch = mjd2000_epoch.replace(tzinfo=dt.timezone.utc)
+    mean_time = mjd2000_epoch + dt.timedelta(days=np.array(geo['Time'][:]).mean())
 
-    solar_az = solar.get_azimuth(geo['Latitude'][:,:],geo['Longitude'][:,:],time)[2:-2,2:-2]
-    solar_zn = 90-solar.get_altitude(geo['Latitude'][:,:],geo['Longitude'][:,:],time)[2:-2,2:-2]
-    sensor_az =geom['Rel_Azimuth_Angle'][2:-2,2:-2] +solar_az # Not exactly right...need to fix minor...
-    sensor_zn = geom['Observing_Angle'][2:-2,2:-2]
+    solar_az = solar.get_azimuth(geo['Latitude_VNIR'][:,:],geo['Longitude_VNIR'][:,:],mean_time)[2:-2,2:-2]
+    solar_zn = 90-solar.get_altitude(geo['Latitude_VNIR'][:,:],geo['Longitude_VNIR'][:,:],mean_time)[2:-2,2:-2]
 
-    longitude= geo['Longitude'][2:-2,2:-2]
-    latitude= geo['Latitude'][2:-2,2:-2]
+    longitude= geo['Longitude_VNIR'][2:-2,2:-2]
+    latitude= geo['Latitude_VNIR'][2:-2,2:-2]
 
     #Create initial elevation raster
     elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
-
     zone,direction = utm_zone(longitude,latitude)
 
+    # Calculate satellite X,Y,Z position for each line
+    ''' GPS data are sampled at 1Hz resulting in steps in the
+        position data, a line is fit to each dimension to estimate
+        continuous position.
+
+        There are more GPS samples than there are lines, to allign
+        the GPS signal with the line, we use the provided 'Time'
+        information for each line to match with the GPS data.
+
+        When converting GPS time to UTC we use 17 sec difference
+        instead of 18 sec because it matches the time provided in
+        the time array.
+    '''
+
+    # Convert satellite GPS position time to UTC
+    sat_t = []
+    for second,week in  zip(pvs['GPS_Time_of_Last_Position'][:].flatten(),pvs['Week_Number'][:].flatten()):
+        gps_second = (week*7*24*60*60) + second
+        gps_epoch = dt.datetime(1980, 1, 6)
+        gps_time  = gps_epoch+ dt.timedelta(seconds=gps_second - 17)
+        sat_t.append(gps_time.hour*3600 + gps_time.minute*60. + gps_time.second)
+    sat_t = np.array(sat_t)[:,np.newaxis]
+
+    # Convert line MJD2000 to UTC
+    grd_t = []
+    for day in geo['Time'][:].flatten():
+        time = mjd2000_epoch + dt.timedelta(days=day)
+        grd_t.append(time.hour*3600 + time.minute*60. + time.second)
+    grd_t = np.array(grd_t)[:,np.newaxis]
+
+    #Fit a line to ground time
+    X = np.concatenate([np.arange(1000)[:,np.newaxis], np.ones(grd_t.shape)],axis=1)
+    slope, intercept = np.linalg.lstsq(X,grd_t,rcond=-1)[0].flatten()
+    line_t_linear = slope*np.arange(1000)+ intercept
+
+    #Fit a line to satellite time
+    measurements = np.arange(len(sat_t))
+    X = np.concatenate([measurements[:,np.newaxis], np.ones(sat_t.shape)],axis=1)
+    slope, intercept = np.linalg.lstsq(X,sat_t,rcond=-1)[0].flatten()
+    sat_t_linear = slope*measurements+ intercept
+
+    # Interpolate x,y,z satelite positions
+    sat_xyz = []
+    for sat_pos in ['x','y','z']:
+        sat_p = np.array(pvs['Wgs84_pos_%s' % sat_pos][:])
+        slope, intercept = np.linalg.lstsq(X,sat_p,rcond=-1)[0].flatten()
+        sat_p_linear = slope*measurements+ intercept
+        interpolator = interp1d(sat_t_linear,sat_p_linear,
+                                fill_value="extrapolate",kind = 'linear')
+        sat_interp = interpolator(line_t_linear)
+        sat_xyz.append(sat_interp[2:-2])
+    sat_xyz = np.array(sat_xyz)
+
+    # Calculate sensor to ground pathlength
+    grd_xyz = np.array(dda2ecef(longitude,latitude,elevation))
+    path = pathlength(sat_xyz,grd_xyz)
+
+
+    # Export satellite position to csv
+    sat_lon,sat_lat,sat_alt = ecef2dda(sat_xyz[0],sat_xyz[1],sat_xyz[2])
+    satellite_df = pd.DataFrame()
+    satellite_df['lat'] = sat_lat
+    satellite_df['lon'] = sat_lon
+    satellite_df['alt'] = sat_alt
+    satellite_df.to_csv('%sPRISMA_%s_satellite_loc.csv' % (out_dir,base_name))
+
+    # Convert satellite coords to local ENU
+    sat_enu  = np.array(dda2utm(sat_lon,sat_lat,sat_alt,
+                       utm_zone(longitude,latitude)))
+    # Convert ground coords to local ENU
+    easting,northing,up  =dda2utm(longitude,latitude,
+                                elevation)
+
+    # Calculate sensor
+    sensor_zn,sensor_az = sensor_view_angles(sat_enu,
+                                             np.array([easting,northing,up]))
+
+    # Perform image matching
     if match:
-        easting,northing =  dd2utm(longitude,latitude)
+        easting,northing,up =  dda2utm(longitude,latitude,elevation)
         coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
                                 np.expand_dims(northing.flatten(),axis=1)],axis=1)
 
@@ -294,106 +349,38 @@ def he5_to_envi(l1_zip,l2c_zip,out_dir,temp_dir,elev_dir,
         longitude,latitude = utm2dd(easting,northing,zone,direction)
 
         #Recalculate elevation with new coordinates
+        logging.info('Rebuilding DEM')
         elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
 
+    # Export location datacube
     if project:
         loc_file = '%sPRISMA_%s_loc_unprj' % (temp_dir,base_name)
     else:
         loc_file = '%sPRISMA_%s_loc_unprj' % (out_dir,base_name)
-
     loc_export(loc_file,longitude,latitude,elevation)
 
-    # Path length
-    ''' 1. Convert Lat, Lon and Altitude images to X,Y,Z (ECEF) coordinates
-        2. Calculate satellite position, original data are sampled at 1Hz
-        resulting in steps in the position data, a line is
-        fit to each dimension to estimate continuous position.
-        3. Calculate satellite-to-pixel distance.
-    '''
 
-    ecef = pyproj.Proj(proj='geocent', ellps='WGS84', datum='WGS84')
-    lla = pyproj.Proj(proj='latlong', ellps='WGS84', datum='WGS84')
-    x, y, z = pyproj.transform(lla, ecef,
-                               longitude,
-                               latitude,
-                               elevation, radians=False)
-
-    gps_seconds = []
-    for second,week in  zip(pvs['GPS_Time_of_Last_Position'][:].flatten(),pvs['Week_Number'][:].flatten()):
-        gps_second = (week*7*24*60*60) + second
-        time = dt.datetime(1980, 1, 6) + dt.timedelta(seconds=gps_second - (37 - 19))
-        gps_seconds.append(time.hour*3600 + time.minute*60. + time.second)
-
-    line_seconds = []
-    for day in geo['Time'][:].flatten():
-        epoch = dt.datetime(2000,1, 1,)
-        epoch = epoch.replace(tzinfo=dt.timezone.utc)
-        time = epoch + dt.timedelta(days=day)
-        line_seconds.append(time.hour*3600 + time.minute*60. + time.second)
-
-    measurements = np.arange(len(pvs['Wgs84_pos_x'][:]))
-
-    sat_t = np.array(gps_seconds)[:,np.newaxis]
-    X = np.concatenate([measurements[:,np.newaxis], np.ones(sat_t.shape)],axis=1)
-    slope, intercept = np.linalg.lstsq(X,sat_t,rcond=-1)[0].flatten()
-    sat_t_linear = slope*measurements+ intercept
-
-    line_t = np.array(line_seconds)[:,np.newaxis]
-    X = np.concatenate([np.arange(1000)[:,np.newaxis], np.ones(line_t.shape)],axis=1)
-    slope, intercept = np.linalg.lstsq(X,line_t,rcond=-1)[0].flatten()
-    line_t_linear = slope*np.arange(1000)+ intercept
-
-    pathlength = np.zeros(x.shape)
-    satelite_xyz = []
-
-    for sat_pos,grd_pos in zip(['x','y','z'],[x,y,z]):
-        sat_p = np.array(pvs['Wgs84_pos_%s' % sat_pos][:])
-        X = np.concatenate([measurements[:,np.newaxis], np.ones(sat_p.shape)],axis=1)
-        slope, intercept = np.linalg.lstsq(X,sat_p,rcond=-1)[0].flatten()
-        sat_p_linear = slope*measurements+ intercept
-        interpolator = interp1d(sat_t_linear,sat_p_linear,
-                                fill_value="extrapolate",kind = 'linear')
-        sat_interp = interpolator(line_t_linear)
-        pathlength += (sat_interp[2:-2]-grd_pos)**2
-        satelite_xyz.append(sat_interp)
-    pathlength = np.sqrt(pathlength)
-
-
-    # Export satellite position to csv
-    lon,lat,alt = pyproj.transform(ecef,lla,
-                                satelite_xyz[0],
-                                satelite_xyz[1],
-                                satelite_xyz[2],
-                                radians=False)
-    satellite_df = pd.DataFrame()
-    satellite_df['lat'] = lat
-    satellite_df['lon'] = lon
-    satellite_df['alt'] = alt
-    satellite_df.to_csv('%sPRISMA_%s_satellite_loc.csv' % (out_dir,base_name))
-
-
+    # Generate remaining observable layers
     slope,aspect = slope_aspect(elevation,temp_dir)
-
     cosine_i = calc_cosine_i(np.radians(solar_zn),
                              np.radians(solar_az),
                              np.radians(slope),
                              np.radians(aspect))
-
+    rel_zn = np.radians(solar_az-sensor_zn)
     phase =  np.arccos(np.cos(np.radians(solar_zn)))*np.cos(np.radians(solar_zn))
-    phase += np.sin(np.radians(solar_zn))*np.sin(np.radians(solar_zn))*np.cos(np.radians(geom['Rel_Azimuth_Angle'][2:-2,2:-2]))
+    phase += np.sin(np.radians(solar_zn))*np.sin(np.radians(solar_zn))*np.cos(rel_zn)
 
-    # Export observable datacube
+    # Export observables datacube
     if project:
         obs_file = '%sPRISMA_%s_obs_unprj' % (temp_dir,base_name)
     else:
         obs_file = '%sPRISMA_%s_obs_unprj' % (out_dir,base_name)
 
-    obs_export(obs_file,pathlength,sensor_az,sensor_zn,
+    obs_export(obs_file,path,sensor_az,sensor_zn,
                solar_az,solar_zn,phase,slope,aspect,
                cosine_i,utc_time)
 
     if project:
-
         #Create new projector with corrected coordinates
         new_coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
                         np.expand_dims(northing.flatten(),axis=1)],axis=1)
@@ -428,7 +415,8 @@ def he5_to_envi(l1_zip,l2c_zip,out_dir,temp_dir,elev_dir,
                 band = project.project_band(iterator.read_next(),-9999)
                 band[band == -9999] = np.nan
                 band = np.nanmean(view_as_blocks(band[:out_lines,:out_cols], (blocksize,blocksize)),axis=(2,3))
-                band[band<0] = 0
+                if file == 'rad':
+                    band[band<0] = 0
                 band[np.isnan(band)] = -9999
                 writer.write_band(band,iterator.current_band)
 
