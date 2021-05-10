@@ -1,10 +1,14 @@
 # SISTER
 ## Space-based Imaging Spectroscopy and Thermal PathfindER
 
-This repository contains files for implementing prototype SBG workflows.
+This repository contains files for implementing prototype hyperspectral
+algorithm workflows.
 
+This repository is under active development and currently contains
+code for preprocessing imaging spectroscopy data from airborne and spaceborne
+sensors.
 
-# Dependencies
+### Dependencies
 
 - gdal
 - h5py
