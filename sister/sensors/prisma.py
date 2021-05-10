@@ -37,26 +37,28 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
         *_rad* : Merged and optionally smile corrected radiance cube
         *_obs* : Observables file in the format of JPL obs files:
                 1. Pathlength (m)
-                2. Sensor view azimuth angle (degrees)
-                3. Sensor view zenith angle (degrees)
-                4. Solar azimuth angle (degrees)
-                5. Solar zenith angle (degrees)
-                6. Sensor view azimuth angle in degrees
-                7. Sensor view azimuth angle in degrees
+                2. To-sensor view azimuth angle (degrees)
+                3. To-sensor view zenith angle (degrees)
+                4. To-sun azimuth angle (degrees)
+                5. To-sun zenith angle (degrees)
+                6. Phase
+                7. Slope (Degrees)
+                8. Aspect (Degrees)
+                9. Cosine i
+                10. UTC decimal hours
         *_loc* : Location file in the following format:
                 1. Longitude (decimal degrees)
                 2. Longitude (decimal degrees)
                 3. Elevation (m)
 
     l1(str): L1 zipped radiance data product path
-    l2(str): L2C zipped reflectance data product path
     out_dir(str): Output directory of ENVI datasets
     temp_dir(str): Temporary directory for intermediate
-    elev_dir (str): Directory zipped elevation tiles
+    elev_dir (str): Directory zipped Copernicus elevation tiles
     smile (str) : Pathname of smile correction surface file
     match (str or list) : Pathname to Landsat image(s) for image re-registration (recommended)
     project (bool) : Project image to UTM grid
-    res (int) : Resolution of projected image, 30 should be one of its factors
+    res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)
 
     '''
 
@@ -76,14 +78,22 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
 
     l1_obj  = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
 
-    file_suffixes =  ['rad','loc','obs']
-
+    smile_correct = False
     if smile:
         smile_obj = ht.HyTools()
         smile_obj.read_file(smile, 'envi')
         shift_surf_smooth = smile_obj.get_band(0)
         smile_correct = True
 
+    #Define output paths
+    if project:
+        rad_file = '%sPRISMA_%s_rad_unprj' % (temp_dir,base_name)
+        loc_file = '%sPRISMA_%s_loc_unprj' % (temp_dir,base_name)
+        obs_file = '%sPRISMA_%s_obs_unprj' % (temp_dir,base_name)
+    else:
+        loc_file = '%sPRISMA_%s_loc_unprj' % (out_dir,base_name)
+        obs_file = '%sPRISMA_%s_obs_unprj' % (out_dir,base_name)
+        rad_file = '%sPRISMA_%s_rad_unprj' % (out_dir,base_name)
 
     measurement = 'rad'
     logging.info('Exporting radiance data')
@@ -140,11 +150,6 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
     swir_obj = ht.HyTools()
     swir_obj.read_file(swir_temp, 'envi')
 
-    if project:
-        output_name = '%sPRISMA_%s_%s_unprj' % (temp_dir,base_name,measurement)
-    else:
-        output_name = '%sPRISMA_%s_%s_unprj' % (out_dir,base_name,measurement)
-
     rad_dict  = envi_header_dict()
     rad_dict ['lines']= vnir_obj.lines-4 #Clip edges of array
     rad_dict ['samples']=vnir_obj.columns-4  #Clip edges of array
@@ -156,7 +161,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
     rad_dict ['wavelength units'] = "nanometers"
     rad_dict ['byte order'] = 0
 
-    writer = WriteENVI(output_name,rad_dict)
+    writer = WriteENVI(rad_file,rad_dict)
     iterator_v =vnir_obj.iterate(by = 'line')
     iterator_s =swir_obj.iterate(by = 'line')
 
@@ -281,7 +286,6 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
     grd_xyz = np.array(dda2ecef(longitude,latitude,elevation))
     path = pathlength(sat_xyz,grd_xyz)
 
-
     # Export satellite position to csv
     sat_lon,sat_lat,sat_alt = ecef2dda(sat_xyz[0],sat_xyz[1],sat_xyz[2])
     satellite_df = pd.DataFrame()
@@ -297,13 +301,12 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
     easting,northing,up  =dda2utm(longitude,latitude,
                                 elevation)
 
-    # Calculate sensor
+    # Calculate sensor geometry
     sensor_zn,sensor_az = sensor_view_angles(sat_enu,
                                              np.array([easting,northing,up]))
 
     # Perform image matching
     if match:
-        easting,northing,up =  dda2utm(longitude,latitude,elevation)
         coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
                                 np.expand_dims(northing.flatten(),axis=1)],axis=1)
 
@@ -311,6 +314,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
         project.create_tree(coords,easting.shape)
         project.query_tree(easting.min()-100,northing.max()+100,30)
 
+        # Project independent variables
         sensor_az_prj = project.project_band(sensor_az,-9999)
         sensor_zn_prj = project.project_band(sensor_zn,-9999)
         elevation_prj = project.project_band(elevation.astype(np.float),-9999)
@@ -319,7 +323,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
         radiance = ht.HyTools()
         radiance.read_file(rad_file, 'envi')
 
-        #Average over Landsat 8 Band 5 bandwidth
+        #Average over Landsat 8 Band 5 bandwidth and warp
         warp_band = np.zeros(longitude.shape)
         for wave in range(850,890,10):
             warp_band += radiance.get_wave(wave)/7.
@@ -336,12 +340,14 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
         smooth_az = uniform_filter(sensor_az,25)
         smooth_zn = uniform_filter(sensor_zn,25)
 
+        # Generate y and x offset surfaces
         i,a,b,c = y_model
         y_offset = i + a*smooth_zn +b*smooth_az + c*smooth_elevation
 
         i,a,b,c= x_model
         x_offset = i + a*smooth_zn +b*smooth_az + c*smooth_elevation
 
+        # Calculate updated coordinates
         easting = easting+  30*x_offset
         northing = northing- 30*y_offset
 
@@ -353,12 +359,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
         elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
 
     # Export location datacube
-    if project:
-        loc_file = '%sPRISMA_%s_loc_unprj' % (temp_dir,base_name)
-    else:
-        loc_file = '%sPRISMA_%s_loc_unprj' % (out_dir,base_name)
     loc_export(loc_file,longitude,latitude,elevation)
-
 
     # Generate remaining observable layers
     slope,aspect = slope_aspect(elevation,temp_dir)
@@ -366,16 +367,11 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
                              np.radians(solar_az),
                              np.radians(slope),
                              np.radians(aspect))
-    rel_zn = np.radians(solar_az-sensor_zn)
+    rel_az = np.radians(solar_az-sensor_az)
     phase =  np.arccos(np.cos(np.radians(solar_zn)))*np.cos(np.radians(solar_zn))
-    phase += np.sin(np.radians(solar_zn))*np.sin(np.radians(solar_zn))*np.cos(rel_zn)
+    phase += np.sin(np.radians(solar_zn))*np.sin(np.radians(solar_zn))*np.cos(rel_az)
 
     # Export observables datacube
-    if project:
-        obs_file = '%sPRISMA_%s_obs_unprj' % (temp_dir,base_name)
-    else:
-        obs_file = '%sPRISMA_%s_obs_unprj' % (out_dir,base_name)
-
     obs_export(obs_file,path,sensor_az,sensor_zn,
                solar_az,solar_zn,phase,slope,aspect,
                cosine_i,utc_time)
@@ -396,7 +392,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
         out_lines = int(blocksize* (project.output_shape[0]//blocksize))
 
         logging.info('Georeferencing datasets to %sm resolution' % res)
-        for file in file_suffixes:
+        for file in ['rad','loc','obs']:
             input_name = '%sPRISMA_%s_%s_unprj' % (temp_dir,base_name,file)
             hy_obj = ht.HyTools()
             hy_obj.read_file(input_name, 'envi')
@@ -420,5 +416,5 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
                 band[np.isnan(band)] = -9999
                 writer.write_band(band,iterator.current_band)
 
-
+    logging.info('Deleting temporary files' % res)
     shutil.rmtree(temp_dir)
