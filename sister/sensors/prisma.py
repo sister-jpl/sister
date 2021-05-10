@@ -416,5 +416,5 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
                 band[np.isnan(band)] = -9999
                 writer.write_band(band,iterator.current_band)
 
-    logging.info('Deleting temporary files' % res)
+    logging.info('Deleting temporary files')
     shutil.rmtree(temp_dir)
