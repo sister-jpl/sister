@@ -11,12 +11,17 @@ import logging
 import numpy as np
 from rtree import index
 from scipy.spatial import cKDTree
-import gdal
 from numba import jit
 import statsmodels.api as sm
 import ray
 import pyproj
 from skimage.util import view_as_blocks
+
+try:
+    import gdal
+except:
+    from osgeo import gdal
+
 
 class Projector():
     """Projector class"""
