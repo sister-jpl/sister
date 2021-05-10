@@ -29,12 +29,10 @@ from ..utils.ancillary import *
 
 home = os.path.expanduser("~")
 
-def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
-                smile = None,match=None,rfl = False, project = True,
-                res = 30):
+def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=None,project = True,res = 30):
     '''
     This function exports three files:
-        *_rad* : Merged and optionally smile corrected radiance cube
+        *_rad* : Merged and optionally shift corrected radiance cube
         *_obs* : Observables file in the format of JPL obs files:
                 1. Pathlength (m)
                 2. To-sensor view azimuth angle (degrees)
@@ -55,8 +53,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
     out_dir(str): Output directory of ENVI datasets
     temp_dir(str): Temporary directory for intermediate
     elev_dir (str): Directory zipped Copernicus elevation tiles
-    smile (str) : Pathname of smile correction surface file
-    match (str or list) : Pathname to Landsat image(s) for image re-registration (recommended)
+    shift (str) : Pathname of wavelength shift correction surface file
+    match (str or list) : Pathname to Landsat image for image re-registration (recommended)
     project (bool) : Project image to UTM grid
     res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)
 
@@ -78,12 +76,12 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
 
     l1_obj  = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
 
-    smile_correct = False
-    if smile:
-        smile_obj = ht.HyTools()
-        smile_obj.read_file(smile, 'envi')
-        shift_surf_smooth = smile_obj.get_band(0)
-        smile_correct = True
+    shift_correct = False
+    if shift:
+        shift_obj = ht.HyTools()
+        shift_obj.read_file(shift, 'envi')
+        shift_surf_smooth = shift_obj.get_band(0)
+        shift_correct = True
 
     #Define output paths
     if project:
@@ -172,16 +170,16 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
         chunk_s =np.flip(chunk_s,axis=1)
 
         if (iterator_v.current_line >=2) and (iterator_v.current_line <= 997):
-            if (measurement == 'rad') & smile_correct:
-                vnir_interpolator = interp1d(shift_surf_smooth[iterator_v.current_line,:60],
-                                               chunk_v,fill_value = "extrapolate",kind='cubic')
+            if (measurement == 'rad') & shift_correct:
+                vnir_interpolator = interp1d(vnir_waves+shift_surf_smooth[iterator_v.current_line-2,:60],
+                                               chunk_v[2:-2,:],fill_value = "extrapolate",kind='cubic')
                 chunk_v = vnir_interpolator(vnir_waves)
-                swir_interpolator = interp1d(shift_surf_smooth[iterator_v.current_line,60:],
-                                               chunk_s,fill_value = "extrapolate",kind='cubic')
+                swir_interpolator = interp1d(swir_waves+shift_surf_smooth[iterator_v.current_line-2,60:],
+                                               chunk_s[2:-2,:],fill_value = "extrapolate",kind='cubic')
                 chunk_s = swir_interpolator(swir_waves)
 
             line = np.concatenate([chunk_v,chunk_s],axis=1)/1000.
-            writer.write_line(line[2:-2,:], iterator_v.current_line-2)
+            writer.write_line(line, iterator_v.current_line-2)
 
     #Load ancillary datasets
     geo =  l1_obj['HDFEOS']["SWATHS"]['PRS_L1_HCO']['Geolocation Fields']
