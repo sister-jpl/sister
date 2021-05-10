@@ -98,7 +98,6 @@ def dda2utm(longitude,latitude,altitude,zn_dir =None):
     out_crs = pyproj.Proj("+init=EPSG:32%s%02d" % (epsg_dir,zone))
     in_crs= pyproj.Proj("+init=EPSG:4326")
 
-    # Convert to easting and northing,
     easting,northing,up = pyproj.transform(in_crs,out_crs,
                                            longitude,
                                            latitude,
@@ -129,9 +128,7 @@ def ecef2dda(x,y,z):
     out_crs = pyproj.Proj(proj='latlong', ellps='WGS84', datum='WGS84')
 
     lon, lat, alt = pyproj.transform(in_crs, out_crs,
-                               x,
-                               y,
-                               z, radians=False)
+                               x,y,z, radians=False)
     return lon, lat, alt
 
 
@@ -147,8 +144,6 @@ def utm2dd(easting,northing,zone,direction):
 
     in_crs = pyproj.Proj("+init=EPSG:32%s%02d" % (epsg_dir,zone))
     out_crs= pyproj.Proj("+init=EPSG:4326")
-
-    # Convert to easting and northing,
     longitude,latitude= pyproj.transform(in_crs,out_crs,easting,northing)
     return longitude,latitude
 
@@ -301,16 +296,17 @@ def pathlength(sat_xyz,grd_xyz):
 def sensor_view_angles(sat_enu,grd_enu):
     '''Calculates sensor zenith and azimuth angle
     in degrees
+
+    TODO: Confirm correct results in all
     '''
+
 
     p = (sat_enu[:,np.newaxis]-grd_enu)/pathlength(sat_enu,grd_enu)
     sensor_zn = 90-np.degrees(np.arcsin(p[2]))
     sensor_az = np.degrees(np.arctan(p[0]/p[1]))
 
     DX,DY,DZ= grd_enu - sat_enu[:,np.newaxis]
-
     sensor_az[DY>0]= -sensor_az[DY>0]
-    sensor_az = 180+sensor_az
 
     return sensor_zn,sensor_az
 
