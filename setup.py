@@ -16,7 +16,7 @@ setup(
                       'rtree',
                       'pandas',
                       'pyproj',
-                      'skimage',
+                      'scikit-image',
                       'scipy',
                       'statsmodels'],
     python_requires='>=3.6, !=3.9.*'
