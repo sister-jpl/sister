@@ -55,7 +55,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=None,project
     elev_dir (str): Directory zipped Copernicus elevation tiles
     shift (str) : Pathname of wavelength shift correction surface file
     match (str or list) : Pathname to Landsat image for image re-registration (recommended)
-    project (bool) : Project image to UTM grid
+    proj (bool) : Project image to UTM grid
     res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)
 
     '''
@@ -178,7 +178,9 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=None,project
                                                chunk_s[2:-2,:],fill_value = "extrapolate",kind='cubic')
                 chunk_s = swir_interpolator(swir_waves)
 
-            line = np.concatenate([chunk_v,chunk_s],axis=1)/1000.
+                line = np.concatenate([chunk_v,chunk_s],axis=1)/1000.
+            else:
+                line = np.concatenate([chunk_v,chunk_s],axis=1)[2:-2,:]/1000.
             writer.write_line(line, iterator_v.current_line-2)
 
     #Load ancillary datasets
@@ -307,10 +309,13 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=None,project
     if match:
         coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
                                 np.expand_dims(northing.flatten(),axis=1)],axis=1)
+        warp_east = easting.min()-100
+        warp_north =northing.max()+100
+        pixel_size = 30
 
         project = Projector()
         project.create_tree(coords,easting.shape)
-        project.query_tree(easting.min()-100,northing.max()+100,30)
+        project.query_tree(warp_east,warp_north,pixel_size)
 
         # Project independent variables
         sensor_az_prj = project.project_band(sensor_az,-9999)
@@ -328,9 +333,15 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=None,project
         warp_band = project.project_band(warp_band,-9999)
         warp_band = 16000*(warp_band-warp_band.min())/warp_band.max()
 
+        landsat,land_east,land_north = get_landsat_image(longitude,latitude,mean_time.month,max_cloud = 5)
+
+        #Calculate offsets between reference and input images
+        offset_x = int((warp_east-land_east)//pixel_size)
+        offset_y = int((land_north-warp_north)//pixel_size)
+
         #Calculate optimal shift
-        y_model,x_model = image_match(match,warp_band,
-                                      easting.min()-100,northing.max()+100,
+        y_model,x_model = image_match(landsat,warp_band,
+                                      offset_x,offset_y,
                                       sensor_zn_prj,sensor_az_prj,elevation_prj)
 
         #Apply uniform filter
@@ -374,7 +385,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=None,project
                solar_az,solar_zn,phase,slope,aspect,
                cosine_i,utc_time)
 
-    if project:
+    if proj:
         #Create new projector with corrected coordinates
         new_coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
                         np.expand_dims(northing.flatten(),axis=1)],axis=1)
