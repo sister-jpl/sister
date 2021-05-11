@@ -171,10 +171,10 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
 
         if (iterator_v.current_line >=2) and (iterator_v.current_line <= 997):
             if (measurement == 'rad') & shift_correct:
-                vnir_interpolator = interp1d(vnir_waves+shift_surf_smooth[iterator_v.current_line,:60],
+                vnir_interpolator = interp1d(vnir_waves+shift_surf_smooth[iterator_v.current_line-2,:60],
                                                chunk_v[2:-2,:],fill_value = "extrapolate",kind='cubic')
                 chunk_v = vnir_interpolator(vnir_waves)
-                swir_interpolator = interp1d(swir_waves+shift_surf_smooth[iterator_v.current_line,60:],
+                swir_interpolator = interp1d(swir_waves+shift_surf_smooth[iterator_v.current_line-2,60:],
                                                chunk_s[2:-2,:],fill_value = "extrapolate",kind='cubic')
                 chunk_s = swir_interpolator(swir_waves)
 
