@@ -7,6 +7,7 @@ Author: Adam Chlus
 
 """
 import os
+from itertools import tee
 import logging
 import numpy as np
 from rtree import index
@@ -307,6 +308,13 @@ def sensor_view_angles(sat_enu,grd_enu):
 
     return sensor_zn,sensor_az
 
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+
 def get_landsat_image(longitude,latitude,month,max_cloud = 5):
     '''Given a set of coordinates and a month this function uses
     Google Earth Engine to generate a landsat scene using scenes from
@@ -336,14 +344,34 @@ def get_landsat_image(longitude,latitude,month,max_cloud = 5):
     landsat_mean = landsat8_cloud.select('B5').mean()
     latlon = ee.Image.pixelLonLat().addBands(landsat_mean)
 
-    latlon_reducer = latlon.reduceRegion(
-                      reducer=ee.Reducer.toList(),
-                      geometry=bounds,
-                      scale=30)
+    lats = []
+    lons = []
+    values = []
 
-    lats = np.array((ee.Array(latlon_reducer.get("latitude")).getInfo()))[:,np.newaxis]
-    lons= np.array((ee.Array(latlon_reducer.get("longitude")).getInfo()))[:,np.newaxis]
-    values= np.array((ee.Array(latlon_reducer.get("B5")).getInfo()))[:,np.newaxis]
+    #Split up area into smaller chunks to prevent exceeding max pixels
+    mini_lats = np.linspace(lat2,lat1,5)
+    mini_lons = np.linspace(lon2,lon1,5)
+
+    for mini_lat1,mini_lat2 in pairwise(mini_lats):
+        for mini_lon1,mini_lon2 in pairwise(mini_lons):
+
+            mini_bounds =  ee.Geometry.Polygon(list([(mini_lat1,mini_lon1),
+                                                       (mini_lat2,mini_lon1),
+                                                       (mini_lat2,mini_lon2),
+                                                       (mini_lat1,mini_lon2),
+                                                       (mini_lat1,mini_lon1)]))
+            latlon_reducer = latlon.reduceRegion(
+                              reducer=ee.Reducer.toList(),
+                              geometry=mini_bounds,
+                              scale=30)
+
+            lats += np.array((ee.Array(latlon_reducer.get("latitude")).getInfo())).tolist()
+            lons+= np.array((ee.Array(latlon_reducer.get("longitude")).getInfo())).tolist()
+            values+= np.array((ee.Array(latlon_reducer.get("B5")).getInfo())).tolist()
+
+    lats = np.array(lats)[:,np.newaxis]
+    lons= np.array(lons)[:,np.newaxis]
+    values= np.array(values)[:,np.newaxis]
 
     easting,northing,up = dda2utm(lons,lats,[0 for x in lats],zn_dir =None)
 
