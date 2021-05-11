@@ -29,7 +29,7 @@ from ..utils.ancillary import *
 
 home = os.path.expanduser("~")
 
-def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=None,project = True,res = 30):
+def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj = False,res = 30):
     '''
     This function exports three files:
         *_rad* : Merged and optionally shift corrected radiance cube
