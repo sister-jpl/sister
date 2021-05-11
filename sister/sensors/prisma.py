@@ -84,7 +84,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
         shift_correct = True
 
     #Define output paths
-    if project:
+    if proj:
         rad_file = '%sPRISMA_%s_rad_unprj' % (temp_dir,base_name)
         loc_file = '%sPRISMA_%s_loc_unprj' % (temp_dir,base_name)
         obs_file = '%sPRISMA_%s_obs_unprj' % (temp_dir,base_name)
