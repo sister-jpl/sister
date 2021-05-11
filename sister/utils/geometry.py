@@ -355,19 +355,19 @@ def get_landsat_image(longitude,latitude,month,max_cloud = 5):
     for mini_lat1,mini_lat2 in pairwise(mini_lats):
         for mini_lon1,mini_lon2 in pairwise(mini_lons):
 
-            mini_bounds =  ee.Geometry.Polygon(list([(mini_lat1,mini_lon1),
-                                                       (mini_lat2,mini_lon1),
-                                                       (mini_lat2,mini_lon2),
-                                                       (mini_lat1,mini_lon2),
-                                                       (mini_lat1,mini_lon1)]))
+            mini_bounds =  ee.Geometry.Polygon(list([(mini_lon1,mini_lat1),
+                                                       (mini_lon2,mini_lat1),
+                                                       (mini_lon2,mini_lat2),
+                                                       (mini_lon1,mini_lat2),
+                                                       (mini_lon1,mini_lat1)]))
             latlon_reducer = latlon.reduceRegion(
                               reducer=ee.Reducer.toList(),
                               geometry=mini_bounds,
                               scale=30)
-
+            values+= np.array((ee.Array(latlon_reducer.get("B5")).getInfo())).tolist()
             lats += np.array((ee.Array(latlon_reducer.get("latitude")).getInfo())).tolist()
             lons+= np.array((ee.Array(latlon_reducer.get("longitude")).getInfo())).tolist()
-            values+= np.array((ee.Array(latlon_reducer.get("B5")).getInfo())).tolist()
+
 
     lats = np.array(lats)[:,np.newaxis]
     lons= np.array(lons)[:,np.newaxis]
