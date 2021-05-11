@@ -9,7 +9,7 @@ code for preprocessing imaging spectroscopy data from airborne and spaceborne
 sensors.
 
 ### Dependencies
-
+- ee (Google Earth Engine)
 - gdal
 - h5py
 - hy-tools
