@@ -16,6 +16,7 @@ import statsmodels.api as sm
 import ray
 import pyproj
 from skimage.util import view_as_blocks
+import ee
 
 try:
     import gdal
@@ -192,7 +193,7 @@ def ray_optimal_shift(indices,offset_x,offset_y,warp_band,ref_band,shift_max):
     return optimal_shift(indices,offset_x,offset_y,warp_band,ref_band,shift_max)
 
 
-def image_match(ref_file,warp_band,ulx,uly,sensor_zn_prj,sensor_az_prj,elevation_prj,shift_max=15):
+def image_match(ref_band,warp_band,offset_x,offset_y,sensor_zn_prj,sensor_az_prj,elevation_prj,shift_max=15):
     ''' This function takes as input a single landsat band 5 (850 nm) image
     and an image to be warped and calculates the offset surface in the X and Y
     direction as a function of the sensor zenith, sensor azimuth and ground elevation.
@@ -216,16 +217,7 @@ def image_match(ref_file,warp_band,ulx,uly,sensor_zn_prj,sensor_az_prj,elevation
 
     if ray.is_initialized():
         ray.shutdown()
-    ray.init(num_cpus = 8)
-
-    reference = gdal.Open(ref_file)
-    east_min,pixel,a,north_max,b,c =reference.GetGeoTransform()
-
-    ref_band =reference.GetRasterBand(1).ReadAsArray()
-    ref_band =  ref_band.astype(np.int)
-
-    offset_x = int((ulx-east_min)//30)
-    offset_y = int((north_max-uly)//30)
+    ray.init()
 
     # Share arrays
     warp_band_r = ray.put(warp_band)
@@ -315,10 +307,60 @@ def sensor_view_angles(sat_enu,grd_enu):
 
     return sensor_zn,sensor_az
 
+def get_landsat_image(longitude,latitude,month,max_cloud = 5):
+    '''Given a set of coordinates and a month this function uses
+    Google Earth Engine to generate a landsat scene using scenes from
+    +/- 1 month of the input month
+    '''
 
+    # Get extents of image, extend to allow for shifting
+    lat1 = float(np.max(latitude)) + .02
+    lat2= float(np.min(latitude)) - .02
 
+    lon1 = float(np.max(longitude)) + .02
+    lon2= float(np.min(longitude)) - .02
 
+    ee.Initialize()
 
+    bounds  = ee.Geometry.Polygon(list([(lon1,lat1),
+                                        (lon2,lat1),
+                                        (lon2,lat2),
+                                        (lon1,lat2),
+                                        (lon1,lat1)]))
+
+    #Retrieve Landsat 8 collection and average
+    landsat8 = ee.ImageCollection("LANDSAT/LC08/C01/T1")
+    landsat8_bounds = landsat8.filterBounds(bounds)
+    landsat8_month = landsat8_bounds.filter(ee.Filter.calendarRange(month-1,month+1,'month'))
+    landsat8_cloud = landsat8_month.filterMetadata('CLOUD_COVER','less_than',max_cloud).sort('CLOUDY_PIXEL_PERCENTAGE')
+    landsat_mean = landsat8_cloud.select('B5').mean()
+    latlon = ee.Image.pixelLonLat().addBands(landsat_mean)
+
+    latlon_reducer = latlon.reduceRegion(
+                      reducer=ee.Reducer.toList(),
+                      geometry=bounds,
+                      scale=30)
+
+    lats = np.array((ee.Array(latlon_reducer.get("latitude")).getInfo()))[:,np.newaxis]
+    lons= np.array((ee.Array(latlon_reducer.get("longitude")).getInfo()))[:,np.newaxis]
+    values= np.array((ee.Array(latlon_reducer.get("B5")).getInfo()))[:,np.newaxis]
+
+    easting,northing,up = dda2utm(lons,lats,[0 for x in lats],zn_dir =None)
+
+    coords =np.concatenate([easting,northing],axis=1)
+
+    project = Projector()
+    project.create_tree(coords,np.expand_dims(easting.flatten(),axis=1).shape)
+
+    ulx = easting.min()-100
+    uly = northing.max()+100
+    pixel_size = 30
+
+    project.query_tree(ulx,uly,pixel_size)
+
+    values_prj = project.project_band(np.expand_dims(values.flatten(),axis=1),-9999)
+
+    return values_prj,ulx,uly
 
 
 
