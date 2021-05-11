@@ -136,11 +136,11 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
     writer = WriteENVI(swir_temp,rad_dict )
     writer.write_chunk(np.moveaxis(swir_data[:,:,:],1,2), 0,0)
 
-    vnir_waves = np.flip(vnir_waves[6:])
-    swir_waves = np.flip(swir_waves[:-3])
+    vnir_waves = np.flip(vnir_waves[3:]) #6
+    swir_waves = np.flip(swir_waves[:-6]) #-3
 
-    vnir_fwhm = np.flip(vnir_fwhm[6:])
-    swir_fwhm = np.flip(swir_fwhm[:-3])
+    vnir_fwhm = np.flip(vnir_fwhm[3:])
+    swir_fwhm = np.flip(swir_fwhm[:-6])
 
     vnir_obj = ht.HyTools()
     vnir_obj.read_file(vnir_temp, 'envi')
@@ -164,9 +164,9 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
     iterator_s =swir_obj.iterate(by = 'line')
 
     while not iterator_v.complete:
-        chunk_v = iterator_v.read_next()[:,6:]
+        chunk_v = iterator_v.read_next()[:,3:]
         chunk_v =np.flip(chunk_v,axis=1)
-        chunk_s = iterator_s.read_next()[:,:-3]
+        chunk_s = iterator_s.read_next()[:,:-6]
         chunk_s =np.flip(chunk_s,axis=1)
 
         if (iterator_v.current_line >=2) and (iterator_v.current_line <= 997):
