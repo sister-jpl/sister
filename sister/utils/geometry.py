@@ -306,7 +306,7 @@ def sensor_view_angles(sat_enu,grd_enu):
     DX,DY,DZ= grd_enu - sat_enu[:,np.newaxis]
     sensor_az[(DX>0) & (DY>0)]= -sensor_az[(DX>0) & (DY>0)]
     sensor_az[(DX>0) & (DY<0)]= 360+sensor_az[(DX>0) & (DY<0)]
-    sensor_az[(DX<0) & (DY>0)]= 180-sensor_az[(DX<0) & (DY>0]
+    sensor_az[(DX<0) & (DY>0)]= 180-sensor_az[(DX<0) & (DY>0)]
 
     return sensor_zn,sensor_az
 
