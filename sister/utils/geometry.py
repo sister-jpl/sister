@@ -81,9 +81,9 @@ def utm_zone(longitude, latitude):
     '''
     zone = int(np.ceil((longitude.min()+180)/6))
     if latitude.mean() >0:
-        direction = 'N'
+        direction = 'North'
     else:
-        direction = 'S'
+        direction = 'South'
     return zone,direction
 
 
@@ -97,7 +97,7 @@ def dda2utm(longitude,latitude,altitude,zn_dir =None):
     else:
         zone,direction = utm_zone(longitude, latitude)
 
-    if direction == 'N':
+    if direction == 'North':
         epsg_dir = 6
     else:
         epsg_dir = 7
@@ -144,7 +144,7 @@ def utm2dd(easting,northing,zone,direction):
     '''Convert coordinates in UTM eastings and northings into
         decimal degrees
     '''
-    if direction == 'N':
+    if direction == 'North':
         epsg_dir = 6
     else:
         epsg_dir = 7
@@ -306,7 +306,7 @@ def sensor_view_angles(sat_enu,grd_enu):
     DX,DY,DZ= grd_enu - sat_enu[:,np.newaxis]
     sensor_az[(DX>0) & (DY>0)]= -sensor_az[(DX>0) & (DY>0)]
     sensor_az[(DX>0) & (DY<0)]= 360+sensor_az[(DX>0) & (DY<0)]
-    sensor_az[(DX<0) & (DY>0)]= 180-sensor_az[(DX<0) & (DY>0)]
+    sensor_az[(DX<0) & (DY>0)]= 180+sensor_az[(DX<0) & (DY>0)]
 
     return sensor_zn,sensor_az
 
