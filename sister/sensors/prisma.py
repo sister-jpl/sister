@@ -395,7 +395,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
         project.query_tree(easting.min()-100,northing.max()+100,30)
 
         blocksize = int(res/30)
-        map_info = ['UTM', 1, 1, easting.min()-100, northing.max()+100,res,
+        map_info = ['UTM', 1, 1, easting.min()-100 - (res/2), northing.max()+100 + (res/2),res,
                            res,zone,direction, 'WGS-84' , 'units=Meters']
         out_cols = int(blocksize* (project.output_shape[1]//blocksize))
         out_lines = int(blocksize* (project.output_shape[0]//blocksize))
