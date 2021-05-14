@@ -1,3 +1,23 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+SISTER
+Space-based Imaging Spectroscopy and Thermal PathfindER
+Author: Adam Chlus
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3 of the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 import requests
 import os
 import tarfile
@@ -10,17 +30,39 @@ import pyproj
 
 def get_neon_radiance(site,date,line,out_dir):
     '''Given a site, date and line number this scripts retreives the line via
-    the NEON API data portal'''
+    the NEON API data portal
+
+    Args:
+        site (str): Four letter site code.
+        date (str): Date in format YYYMMDD.
+        line (int): Line number.
+        out_dir (str): Output directory path.
+
+    Returns:
+        filename (str): Pathname of downloaded HDF file.
+
+    '''
+
+    year = date[:4]
+    month =  date[4:6]
 
     product_request = requests.get('https://data.neonscience.org/api/v0/data/DP1.30008.001/%s/%s-%s' % (site,year,month)).json()
     files= product_request['data']['files']
 
+    filename = None
+
     # Cycle until matching file is found
     for file in files:
-        if 'L%03d' % line in file['name']:
+        if ('L%03d' % line in file['name']) & (date in file['name']):
             # Download image to disk
+            base_name = file['name'].replace('_radiance.h5','')
+
+            out_dir = out_dir+  base_name + '/'
+            if not os.path.isdir(out_dir):
+                os.mkdir(out_dir)
             url = file['url']
             filename = '%s/%s' % (out_dir,file['name'])
+
             if not os.path.isfile(filename):
                 with requests.get(url, stream=True) as r:
                     print("Downloading %s" % file['name'])
@@ -28,11 +70,22 @@ def get_neon_radiance(site,date,line,out_dir):
                     with open(filename, 'wb') as f:
                         for chunk in r.iter_content(chunk_size=int(1E8)):
                             f.write(chunk)
+    if not filename:
+        print('%s %s %s not found' % (site,date,line))
     return filename
 
 def neon_to_envi(filename,resolution = 1,compress=True):
     '''Convert a NEON HDF radiance file to ENVI formated
-    image along with observables and location data cube
+    image along with observables and location data cubes
+
+    Args:
+        filename (str): Path to HDF file.
+        resolution (int, optional): Output image resolution. Defaults to 1.
+        compress (Bool, optional): Compress file into tar.gz and delete
+                                   uncompressed files. Defaults to True.
+    Returns:
+        None.
+
     '''
 
     # Load HDF file
@@ -154,13 +207,18 @@ def neon_to_envi(filename,resolution = 1,compress=True):
         band[np.isnan(band)] = -9999
         writer.write_band(band,band_num)
 
-    # if compress:
-    #     with tarfile.open(filename.replace('_radiance.h5','.tar.gz'), "w:gz") as tar:
-    #         tar.add(filename.replace('radiance.h5','%s.hdr' % suffix),
-    #                 arcname=os.path.basename(filename.replace('radiance.h5','%s.hdr' % suffix)))
+    os.remove(filename)
 
-    #     for suffix in ['rad','loc','obs']:
+    if compress:
+        with tarfile.open(filename.replace('_radiance.h5','.tar.gz'), "w:gz") as tar:
+            for suffix in ['rad','loc','obs']:
+                tar.add(filename.replace('radiance.h5','%s.hdr' % suffix),
+                        arcname=os.path.basename(filename.replace('radiance.h5','%s.hdr' % suffix)))
+                tar.add(filename.replace('radiance.h5',suffix),
+                        arcname=os.path.basename(filename.replace('radiance.h5',suffix)))
 
+            os.remove(filename.replace('radiance.h5',suffix))
+            os.remove(filename.replace('radiance.h5','%s.hdr' % suffix))
 
 
 
