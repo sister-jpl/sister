@@ -1,23 +1,21 @@
 # SISTER
-## Space-based Imaging Spectroscopy and Thermal PathfindER
+## Space-based Imaging Spectroscopy and Thermal pathfindER
 
-This repository contains files for implementing prototype hyperspectral
-algorithm workflows.
+This repository contains code for implementing prototype algorithm workflows
+for the Space-based Imaging Spectroscopy and Thermal pathfindER (SISTER).
 
 This repository is under active development and currently contains
 code for preprocessing imaging spectroscopy data from airborne and spaceborne
-sensors.
+sensors for input into higher level algorithms including atmospheric, topographic
+and BRDF correction algorithms.
 
-### Dependencies
-- ee (Google Earth Engine)
-- gdal
-- h5py
-- hy-tools
-- numpy
-- ray
-- rtree
-- pandas
-- pyproj
-- skimage
-- scipy
-- statsmodels
+### Installation
+To install, clone
+```bash
+git clone https://github.com/EnSpec/hytools.git
+```
+
+and install with setuptools
+```bash
+python setup.py install
+```
