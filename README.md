@@ -12,7 +12,7 @@ and BRDF correction algorithms.
 ### Installation
 To install, clone
 ```bash
-git clone https://github.com/EnSpec/hytools.git
+git clone https://github.com/EnSpec/sister.git
 ```
 
 and install with setuptools
