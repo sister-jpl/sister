@@ -30,7 +30,7 @@ three ENVI formated files:
 2. Location datacube (longitude, latitude, altitude)
 3. Observables datacube (sensor, solar geometry......)
 
-[PRISMA Algorithm Workflow](https://github.com/EnSpec/sister/blob/master/figures/prisma_workflow.svg)
+[PRISMA Algorithm Workflow](https://raw.githubusercontent.com/EnSpec/sister/master/figures/prisma_workflow.svg)
 
 ```python
 
