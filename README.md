@@ -26,11 +26,11 @@ python setup.py install
 
 The following code takes as input a PRISMA L1 radiance image along with ESA Copernicus DEM tiles and exports
 three ENVI formated files:
-            1. Merged VNIR+SWIR radiance datacube
-            2. Location datacube (longitude, latitude, altitude)
-            3. Observables datacube (sensor, solar geometry......)
+1. Merged VNIR+SWIR radiance datacube
+2. Location datacube (longitude, latitude, altitude)
+3. Observables datacube (sensor, solar geometry......)
 
-[PRISMA Algorithm Workflow](https://github.com/EnSpec/sister/blob/master/figures/prisma_workflow.svg).
+[PRISMA Algorithm Workflow](https://github.com/EnSpec/sister/blob/master/figures/prisma_workflow.svg)
 
 ```python
 
@@ -40,11 +40,11 @@ from sister.sensors import prisma
 base_dir = '/'
 
 # Copernicus DEM directory
-elev_dir = '/data/99SerakData2/sister/data/cop_dsm/'
+elev_dir = '/data/sister/data/cop_dsm/'
 base_name = '20200621003500_20200621003505_0001'
 l1_zip  = '/data/prisma/PRS_L1_STD_OFFL_%s.zip'% base_name
 out_dir = '%s/data/prisma/rad/PRISMA_%s/' % (base_dir,base_name)
-temp_dir =  '%s/temp/' % home
+temp_dir =  '%s/temp/' % base_dir
 
 #Wavelength shift surface
 shift = '%s/sister/data/prisma/wavelength_shift/PRISMA_20200721104249_20200721104253_0001_wavelength_shift_surface' % base_dir
