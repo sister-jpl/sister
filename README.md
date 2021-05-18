@@ -39,12 +39,13 @@ from sister.sensors import prisma
 
 base_dir = '/'
 
-# Copernicus DEM directory
-elev_dir = '/data/sister/data/cop_dsm/'
 base_name = '20200621003500_20200621003505_0001'
 l1_zip  = '/data/prisma/PRS_L1_STD_OFFL_%s.zip'% base_name
 out_dir = '%s/data/prisma/rad/PRISMA_%s/' % (base_dir,base_name)
 temp_dir =  '%s/temp/' % base_dir
+
+# Copernicus DEM directory
+elev_dir = '/data/sister/data/cop_dsm/'
 
 #Wavelength shift surface
 shift = '%s/sister/data/prisma/wavelength_shift/PRISMA_20200721104249_20200721104253_0001_wavelength_shift_surface' % base_dir
