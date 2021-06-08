@@ -209,11 +209,7 @@ def geotiff_to_envi(base_name,l1b_zip,out_dir,temp_dir,elev_dir,
             lat,lon = coord_dict[point]
             dist = np.sqrt((corner_lon-lon)**2 + (corner_lat-lat)**2)
             closest = np.argmin(dist)
-            logging.info(point)
-            logging.info(lat,lon)
-            logging.info(corner_lat[closest],corner_lon[closest])
             coord_dict[point]= [corner_lat[closest],corner_lon[closest]]
-            logging.info(corner_lat[closest]-lat,corner_lon[closest]-lon)
 
     # Get ISS altitude
     altitude_m = float(base.findall('altitudeCoverage')[0].text)
