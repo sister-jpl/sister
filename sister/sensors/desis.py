@@ -18,53 +18,71 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import xml.etree.ElementTree as ET
-import numpy as np
-import gdal
-import hytools as ht
-import pyproj
+
 import datetime as dt
 import os
-import zipfile
+import logging
 import shutil
-import pandas as pd
+import zipfile
+import xml.etree.ElementTree as ET
+import gdal
 import hytools as ht
 from hytools.io.envi import WriteENVI,envi_header_dict
 from hytools.topo.topo import calc_cosine_i
-from scipy.interpolate import interp1d
+import numpy as np
+import pandas as pd
+import pyproj
 from pysolar import solar
-from scipy.interpolate import griddata
+from scipy.interpolate import griddata,interp1d
+from scipy.ndimage import uniform_filter
 from scipy.optimize import curve_fit
 from skimage.util import view_as_blocks
-from scipy.ndimage import uniform_filter
 from ..utils.terrain import *
 from ..utils.geometry import *
 from ..utils.ancillary import *
-
 
 def gaussian(x, mu, fwhm):
     sig = fwhm/(2* np.sqrt(2*np.log(2)))
     return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
-def desis_to_envi(base_name,l1b_zip,l1c_zip,out_dir,elev_dir,temp_dir,
-                  match=None,project = True, res = 30):
-    '''
-    This function exports a PRISMA L1 radiance products to an ENVI formatted
-    binary file along with ancillary datasets including location data and geometry.
-    This scripts requires L1 radiance, L2c reflectance and SRTM elevation products for a scene.
-    '''
+def geotiff_to_envi(base_name,l1b_zip,out_dir,temp_dir,elev_dir,
+                  match=None,proj = True, res = 30):
 
-    #Testing
-    # elev_dir = '/data2/cop_dsm/'
-    # base_name = "DT0488344520_005-20200818T141910"
-    # l1b_zip = '/data2/desis/zip/DESIS-HSI-L1B-%s-V0210.zip' %  base_name
-    # l1c_zip = '/data2/desis/zip/DESIS-HSI-L1C-%s-V0210.zip' % base_name
-    # out_dir = '/data2/desis/envi/DESIS_%s/' % base_name
-    # temp_dir = '/data2/temp/'
-    # match = '/data2/landsat/LC08_L2SP_025028_20200617_20200824_02_T1_SR_B5.TIF'
-    # rfl = False
-    # project = True
-    # res = 30
+    '''
+     This function exports three files:
+         *_rad* : Merged and optionally shift corrected radiance cube
+         *_obs* : Observables file in the format of JPL obs files:
+                 1. Pathlength (m)
+                 2. To-sensor view azimuth angle (degrees)
+                 3. To-sensor view zenith angle (degrees)
+                 4. To-sun azimuth angle (degrees)
+                 5. To-sun zenith angle (degrees)
+                 6. Phase
+                 7. Slope (Degrees)
+                 8. Aspect (Degrees)
+                 9. Cosine i
+                 10. UTC decimal hours
+         *_loc* : Location file in the following format:
+                 1. Longitude (decimal degrees)
+                 2. Longitude (decimal degrees)
+                 3. Elevation (m)
+
+     l1(str): L1B zipped radiance data product path
+     out_dir(str): Output directory of ENVI datasets
+     temp_dir(str): Temporary directory for intermediate
+     elev_dir (str): Directory zipped Copernicus elevation tiles
+     shift (str) : Pathname of wavelength shift correction surface file
+     match (str or list) : Pathname to Landsat image for image re-registration (recommended)
+     proj (bool) : Project image to UTM grid
+     res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)
+
+    This functions assumes that the L1B and L1C zipped radiance products are located in the
+    same directory
+    '''
+    l1c_zip = l1b_zip.replace('L1B','L1C')
+    if not os.path.isfile(l1c_zip):
+        logging.error('Zipped L1C radiance file not found. Exiting.')
+        return
 
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
@@ -75,13 +93,9 @@ def desis_to_envi(base_name,l1b_zip,l1c_zip,out_dir,elev_dir,temp_dir,
 
     for file in [l1b_zip,l1c_zip]:
         zip_base  =os.path.basename(file)
-        print('Unzipping %s' % zip_base)
+        logging.info('Unzipping %s' % zip_base)
         with zipfile.ZipFile(file,'r') as zipped:
             zipped.extractall(temp_dir)
-
-    l1  = '%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name)
-    l2c  = '%sPRS_L2C_STD_%s.he5' % (temp_dir,base_name)
-
 
     l1b_file = gdal.Open('%s/DESIS-HSI-L1B-%s-V0210-SPECTRAL_IMAGE.tif' % (temp_dir,base_name))
     l1c_file = gdal.Open('%s/DESIS-HSI-L1C-%s-V0210-SPECTRAL_IMAGE.tif' % (temp_dir,base_name))
@@ -122,7 +136,6 @@ def desis_to_envi(base_name,l1b_zip,l1c_zip,out_dir,elev_dir,temp_dir,
 
     scene_az = float(specific.findall('sceneAzimuthAngle')[0].text)
     scene_zn = float(specific.findall('sceneIncidenceAngle')[0].text)
-    mirror_angle = float(specific.findall('pointingMirrorAngle')[0].text)
 
     # Get acquisition start and end time
     base =  root[2]
@@ -190,17 +203,17 @@ def desis_to_envi(base_name,l1b_zip,l1c_zip,out_dir,elev_dir,temp_dir,
                                 coords[1],
                                 radians=False)
 
-    #Update coord_dict with close matching corner coordinate
+    #Update coord_dict with closest matching corner coordinate
     for point in coord_dict:
         if 'point' in point:
             lat,lon = coord_dict[point]
             dist = np.sqrt((corner_lon-lon)**2 + (corner_lat-lat)**2)
             closest = np.argmin(dist)
-            print(point)
-            print(lat,lon)
-            print(corner_lat[closest],corner_lon[closest])
+            logging.info(point)
+            logging.info(lat,lon)
+            logging.info(corner_lat[closest],corner_lon[closest])
             coord_dict[point]= [corner_lat[closest],corner_lon[closest]]
-            print(corner_lat[closest]-lat,corner_lon[closest]-lon)
+            logging.info(corner_lat[closest]-lat,corner_lon[closest]-lon)
 
     # Get ISS altitude
     altitude_m = float(base.findall('altitudeCoverage')[0].text)
@@ -221,15 +234,20 @@ def desis_to_envi(base_name,l1b_zip,l1c_zip,out_dir,elev_dir,temp_dir,
     rad_dict ['byte order'] = 0
     rad_dict ['data ignore value'] = -9999
 
-    if project:
-        output_name = '%sDESIS_%s_rad_unprj' % (temp_dir,base_name)
+    #Define output paths
+    if proj:
+        rad_file = '%sDESIS_%s_rad_unprj' % (temp_dir,base_name)
+        loc_file = '%sDESIS_%s_loc_unprj' % (temp_dir,base_name)
+        obs_file = '%sDESIS_%s_obs_unprj' % (temp_dir,base_name)
     else:
-        output_name = '%sDESIS_%s_rad_unprj' % (out_dir,base_name)
+        loc_file = '%sDESIS_%s_loc_unprj' % (out_dir,base_name)
+        obs_file = '%sDESIS_%s_obs_unprj' % (out_dir,base_name)
+        rad_file = '%sDESIS_%s_rad_unprj' % (out_dir,base_name)
 
-    writer = WriteENVI(output_name,rad_dict )
+    writer = WriteENVI(rad_file,rad_dict )
 
     #Write VNIR cube
-    print('Exporting radiance data')
+    logging.info('Exporting radiance data')
     for line_num in range(l1b_file.RasterYSize):
         line = raster[:,line_num,:].astype(float)
         line = line*gain[:,np.newaxis] + offset[:,np.newaxis]
@@ -260,87 +278,59 @@ def desis_to_envi(base_name,l1b_zip,l1c_zip,out_dir,elev_dir,temp_dir,
     elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
     zone,direction = utm_zone(longitude,latitude)
 
-    # Export observable datacube
-    ################################################################
     solar_az = solar.get_azimuth(latitude,longitude,start_time)
     solar_zn = 90-solar.get_altitude(latitude,longitude,start_time)
 
     ecef = pyproj.Proj(proj='geocent', ellps='WGS84', datum='WGS84')
     lla = pyproj.Proj(proj='latlong', ellps='WGS84', datum='WGS84')
 
-    x, y, z = pyproj.transform(lla, ecef,
+    grd_xyz = np.array(pyproj.transform(lla, ecef,
                                longitude,
                                latitude,
-                               elevation, radians=False)
+                               elevation, radians=False))
 
-    # Calculate sensor-to-ground pathlength
-    satelite_xyz = []
-    pathlength = np.zeros(x.shape)
-    for sat_coord,grd_coord in zip(orbit_data.T,[x,y,z]):
-        line_grid = np.linspace(0,1,len(sat_coord))*longitude.shape[0]
+    # Calculate satellite XYZ position
+    sat_xyz = []
+    line_grid = np.linspace(0,1,orbit_data.shape[0])*longitude.shape[0]
+    for sat_coord in orbit_data.T:
         interpolator = interp1d(line_grid,sat_coord)
         sat_interp = interpolator(np.arange(longitude.shape[0]))
-        pathlength += (sat_interp[:,np.newaxis]-grd_coord)**2
-        satelite_xyz.append(sat_interp)
-    pathlength = np.sqrt(pathlength)
-
+        sat_xyz.append(sat_interp)
+    sat_xyz = np.array(sat_xyz)
+    path =np.linalg.norm(sat_xyz[:,:,np.newaxis]-grd_xyz,axis=0)
     # Export satellite position to csv
-    sv_lon,sv_lat,sv_alt = pyproj.transform(ecef,lla,
-                                satelite_xyz[0],
-                                satelite_xyz[1],
-                                satelite_xyz[2],
-                                radians=False)
+    sat_lon,sat_lat,sat_alt = ecef2dda(sat_xyz[0],sat_xyz[1],sat_xyz[2])
     satellite_df = pd.DataFrame()
-    satellite_df['lat'] = sv_lat
-    satellite_df['lon'] = sv_lon
-    satellite_df['alt'] = sv_alt
+    satellite_df['lat'] = sat_lat
+    satellite_df['lon'] = sat_lon
+    satellite_df['alt'] = sat_alt
     satellite_df.to_csv('%sDESIS_%s_satellite_loc.csv' % (out_dir,base_name))
 
-    #Calculate sensor zenith angle
-    sv_x = (x-satelite_xyz[0][:,np.newaxis])[:,:,np.newaxis]
-    sv_y = (y-satelite_xyz[1][:,np.newaxis])[:,:,np.newaxis]
-    sv_z = (z-satelite_xyz[2][:,np.newaxis])[:,:,np.newaxis]
-    sv_xyz = np.concatenate([sv_x,sv_y,sv_z],axis=2)
-    grnd_xyz = np.concatenate([x[:,:,np.newaxis],
-                                y[:,:,np.newaxis],
-                                z[:,:,np.newaxis],],axis=2)
-    dot = np.einsum('ijk,ijk->ij', sv_xyz,grnd_xyz)
-    denom = np.linalg.norm(sv_xyz,axis=2)* np.linalg.norm(grnd_xyz,axis=2)
-    sensor_zn = 180-np.degrees(np.arccos(dot/denom))
 
+    # Convert satellite coords to local ENU
+    sat_enu  = np.array(dda2utm(sat_lon,sat_lat,sat_alt,
+                       utm_zone(longitude,latitude)))
+    # Convert ground coords to local ENU
+    easting,northing,up  =dda2utm(longitude,latitude,
+                                elevation)
 
-    # Calculate sensor angles.
-    DX = x-np.expand_dims(satelite_xyz[0], axis=1)
-    DY = y-np.expand_dims(satelite_xyz[1], axis=1)
-    DZ = z-np.expand_dims(satelite_xyz[2], axis=1)
+    # Calculate sensor geometry
+    sensor_zn,sensor_az = sensor_view_angles(sat_enu,
+                                             np.array([easting,northing,up]))
 
-    view_azimuth = np.arcsin(np.abs(DX)/np.sqrt(DX**2+DY**2))
-    ind = (DX>0)&(DY<0)
-    view_azimuth[ind]=np.pi-view_azimuth[ind]
-    ind = (DX<0)&(DY<0)
-    view_azimuth[ind]=np.pi+view_azimuth[ind]
-    ind = (DX<0)&(DY>0)
-    view_azimuth[ind]=2*np.pi-view_azimuth[ind]
-    sensor_az = np.degrees(view_azimuth)
-
-    print("####################")
-    print("Scene zenith:",scene_zn)
-    print("Calc zenith:",sensor_zn[511,511])
-    print("Zenith diff:",scene_zn-sensor_zn[511,511])
-    print("####################")
-    print("Scene azimuth:",scene_az)
-    print("Calc azimuth:",sensor_az[511,511])
-    print("Azimuth diff:",scene_az-sensor_az[511,511])
 
     if match:
-        easting,northing =  dd2utm(longitude,latitude)
         coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
                                 np.expand_dims(northing.flatten(),axis=1)],axis=1)
+        warp_east = easting.min()-100
+        warp_north =northing.max()+100
+        pixel_size = 30
 
         project = Projector()
         project.create_tree(coords,easting.shape)
-        project.query_tree(easting.min()-100,northing.max()+100,30)
+        project.query_tree(warp_east,warp_north,pixel_size)
 
+        # Project independent variables
         sensor_az_prj = project.project_band(sensor_az,-9999)
         sensor_zn_prj = project.project_band(sensor_zn,-9999)
         elevation_prj = project.project_band(elevation.astype(np.float),-9999)
@@ -349,16 +339,23 @@ def desis_to_envi(base_name,l1b_zip,l1c_zip,out_dir,elev_dir,temp_dir,
         radiance = ht.HyTools()
         radiance.read_file(rad_file, 'envi')
 
-        #Average over Landsat 8 Band 5 bandwidth
+        #Average over Landsat 8 Band 5 bandwidth and warp
         warp_band = np.zeros(longitude.shape)
         for wave in range(850,890,10):
             warp_band += radiance.get_wave(wave)/7.
         warp_band = project.project_band(warp_band,-9999)
         warp_band = 16000*(warp_band-warp_band.min())/warp_band.max()
 
+        landsat,land_east,land_north = get_landsat_image(longitude,latitude,
+                                                         end_time.month,max_cloud = 5)
+
+        #Calculate offsets between reference and input images
+        offset_x = int((warp_east-land_east)//pixel_size)
+        offset_y = int((land_north-warp_north)//pixel_size)
+
         #Calculate optimal shift
-        y_model,x_model = image_match(match,warp_band,
-                                      easting.min()-100,northing.max()+100,
+        y_model,x_model = image_match(landsat,warp_band,
+                                      offset_x,offset_y,
                                       sensor_zn_prj,sensor_az_prj,elevation_prj)
 
         #Apply uniform filter
@@ -366,12 +363,14 @@ def desis_to_envi(base_name,l1b_zip,l1c_zip,out_dir,elev_dir,temp_dir,
         smooth_az = uniform_filter(sensor_az,25)
         smooth_zn = uniform_filter(sensor_zn,25)
 
+        # Generate y and x offset surfaces
         i,a,b,c = y_model
         y_offset = i + a*smooth_zn +b*smooth_az + c*smooth_elevation
 
         i,a,b,c= x_model
         x_offset = i + a*smooth_zn +b*smooth_az + c*smooth_elevation
 
+        # Calculate updated coordinates
         easting = easting+  30*x_offset
         northing = northing- 30*y_offset
 
@@ -379,42 +378,31 @@ def desis_to_envi(base_name,l1b_zip,l1c_zip,out_dir,elev_dir,temp_dir,
         longitude,latitude = utm2dd(easting,northing,zone,direction)
 
         #Recalculate elevation with new coordinates
+        logging.info('Rebuilding DEM')
         elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
 
-    if project:
-        loc_file = '%sDESIS_%s_loc_unprj' % (temp_dir,base_name)
-    else:
-        loc_file = '%sDESIS_%s_loc_unprj' % (out_dir,base_name)
 
     loc_export(loc_file,longitude,latitude,elevation)
 
+    # Generate remaining observable layers
     slope,aspect = slope_aspect(elevation,temp_dir)
-
-    # Calculate illumination datasets
     cosine_i = calc_cosine_i(np.radians(solar_zn),
                              np.radians(solar_az),
                              np.radians(slope),
                              np.radians(aspect))
-
-    phase =  np.arccos(np.cos(np.radians(solar_zn)))*np.cos(np.radians(sensor_zn))
-    phase += np.sin(np.radians(solar_zn))*np.sin(np.radians(sensor_zn))*np.cos(np.radians(sensor_az-solar_az))
+    rel_az = np.radians(solar_az-sensor_az)
+    phase =  np.arccos(np.cos(np.radians(solar_zn)))*np.cos(np.radians(solar_zn))
+    phase += np.sin(np.radians(solar_zn))*np.sin(np.radians(solar_zn))*np.cos(rel_az)
 
     utc_time = (lines/(l1b_file.RasterYSize) * (end_time-start_time).seconds)/60/60
     utc_time+= start_time.hour + start_time.minute/60
     utc_time = utc_time[:,85:]
 
-    # Export observable datacube
-    if project:
-        obs_file = '%sDESIS_%s_obs_unprj' % (temp_dir,base_name)
-    else:
-        obs_file = '%sDESIS_%s_obs_unprj' % (out_dir,base_name)
-
-    obs_export(obs_file,pathlength,sensor_az,sensor_zn,
+    obs_export(obs_file,path,sensor_az,sensor_zn,
                solar_az,solar_zn,phase,slope,aspect,
                cosine_i,utc_time)
 
-    if project:
-
+    if proj:
         #Create new projector with corrected coordinates
         new_coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
                         np.expand_dims(northing.flatten(),axis=1)],axis=1)
@@ -429,9 +417,9 @@ def desis_to_envi(base_name,l1b_zip,l1c_zip,out_dir,elev_dir,temp_dir,
         out_cols = int(blocksize* (project.output_shape[1]//blocksize))
         out_lines = int(blocksize* (project.output_shape[0]//blocksize))
 
-        print('Georeferencing datasets')
+        logging.info('Georeferencing datasets')
         for file in ['rad','loc','obs']:
-            print(file)
+            logging.info(file)
             input_name = '%sDESIS_%s_%s_unprj' % (temp_dir,base_name,file)
             hy_obj = ht.HyTools()
             hy_obj.read_file(input_name, 'envi')
@@ -453,5 +441,5 @@ def desis_to_envi(base_name,l1b_zip,l1c_zip,out_dir,elev_dir,temp_dir,
                 band[band<0] = 0
                 band[np.isnan(band)] = -9999
                 writer.write_band(band,iterator.current_band)
-
+    logging.info('Deleting temporary files')
     shutil.rmtree(temp_dir)
