@@ -300,7 +300,7 @@ def pathlength(sat_xyz,grd_xyz):
     to ground
 
     '''
-    return np.linalg.norm(sat_xyz[:,np.newaxis]-grd_xyz,axis=0)
+    return np.linalg.norm(sat_xyz[:,:,np.newaxis]-grd_xyz,axis=0)
 
 
 def sensor_view_angles(sat_enu,grd_enu):
@@ -311,11 +311,11 @@ def sensor_view_angles(sat_enu,grd_enu):
     '''
 
 
-    p = (sat_enu[:,np.newaxis]-grd_enu)/pathlength(sat_enu,grd_enu)
+    p = (sat_enu[:,:,np.newaxis]-grd_enu)/pathlength(sat_enu,grd_enu)
     sensor_zn = 90-np.degrees(np.arcsin(p[2]))
     sensor_az = np.degrees(np.arctan(p[0]/p[1]))
 
-    DX,DY,DZ= grd_enu - sat_enu[:,np.newaxis]
+    DX,DY,DZ= grd_enu - sat_enu[:,:,np.newaxis]
     sensor_az[(DX>0) & (DY>0)]= -sensor_az[(DX>0) & (DY>0)]
     sensor_az[(DX>0) & (DY<0)]= 360+sensor_az[(DX>0) & (DY<0)]
     sensor_az[(DX<0) & (DY>0)]= 180+sensor_az[(DX<0) & (DY>0)]
