@@ -22,6 +22,7 @@ import requests
 import os
 import tarfile
 import numpy as np
+import hytools as ht
 from hytools.io.envi import WriteENVI
 from hytools.io.envi import envi_header_dict
 import h5py
@@ -74,7 +75,7 @@ def get_neon_radiance(site,date,line,out_dir):
         print('%s %s %s not found' % (site,date,line))
     return filename
 
-def neon_to_envi(filename,resolution = 1,compress=True):
+def neon_to_envi(filename,resolution = 1):
     '''Convert a NEON HDF radiance file to ENVI formated
     image along with observables and location data cubes
 
@@ -112,6 +113,30 @@ def neon_to_envi(filename,resolution = 1,compress=True):
 
     map_info = [str(info).strip() for info in map_info]
 
+
+    # Export VNIR to temporary ENVI
+    rad_dict = envi_header_dict()
+    rad_dict['lines']= rad_dec.shape[0]
+    rad_dict['samples']= rad_dec.shape[1]
+    rad_dict['bands']=  rad_dec.shape[2]
+    rad_dict['interleave']= 'bsq'
+    rad_dict['data type'] = 12
+    rad_dict['byte order'] = 0
+    dec_temp = filename.replace('radiance.h5','rad_dec')
+    writer = WriteENVI(dec_temp,rad_dict )
+    writer.write_chunk(rad_dec, 0,0)
+    
+    int_temp = filename.replace('radiance.h5','rad_int')
+    writer = WriteENVI(int_temp,rad_dict )
+    writer.write_chunk(rad_int, 0,0)
+
+    int_obj = ht.HyTools()
+    int_obj.read_file(int_temp, 'envi')
+
+    dec_obj = ht.HyTools()
+    dec_obj.read_file(dec_temp, 'envi')
+
+
     # Export radiance
     ####################################################
     rad_dict = envi_header_dict()
@@ -132,14 +157,17 @@ def neon_to_envi(filename,resolution = 1,compress=True):
 
     for band_num in range(rad_dict['bands']):
         print(band_num)
-        band_int = rad_int[:,:,band_num].astype(float)
-        band_dec = rad_dec[:,:,band_num]/50000
+        band_int = int_obj.get_band(band_num).astype(float)
+        band_dec = dec_obj.get_band(band_num)/50000
         band = band_int + band_dec
         band[band_int==255] = np.nan
         band = band[:new_lines*resolution,:new_cols*resolution]
         band  = view_as_blocks(band, (resolution,resolution)).mean(axis=(2,3))
         band[np.isnan(band)] = -9999
         writer.write_band(band,band_num)
+
+    os.remove(dec_temp)
+    os.remove(int_temp)
 
     # Export observables
     ####################################################
@@ -208,20 +236,6 @@ def neon_to_envi(filename,resolution = 1,compress=True):
         writer.write_band(band,band_num)
 
     os.remove(filename)
-
-    if compress:
-        with tarfile.open(filename.replace('_radiance.h5','.tar.gz'), "w:gz") as tar:
-            for suffix in ['rad','loc','obs']:
-                tar.add(filename.replace('radiance.h5','%s.hdr' % suffix),
-                        arcname=os.path.basename(filename.replace('radiance.h5','%s.hdr' % suffix)))
-                tar.add(filename.replace('radiance.h5',suffix),
-                        arcname=os.path.basename(filename.replace('radiance.h5',suffix)))
-
-            os.remove(filename.replace('radiance.h5',suffix))
-            os.remove(filename.replace('radiance.h5','%s.hdr' % suffix))
-
-
-
 
 
 
