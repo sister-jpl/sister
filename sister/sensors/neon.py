@@ -18,9 +18,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import requests
 import os
-import tarfile
+import requests
 import numpy as np
 import hytools as ht
 from hytools.io.envi import WriteENVI
@@ -93,7 +92,6 @@ def neon_to_envi(filename,resolution = 1):
     hdf_obj = h5py.File(filename,'r')
 
     key = [key for key in hdf_obj.keys()][0]
-
     rad_dec = hdf_obj[key]['Radiance']['RadianceDecimalPart']
     rad_int =hdf_obj[key]['Radiance']['RadianceIntegerPart']
     obs = hdf_obj[key]['Radiance']['Metadata']['Ancillary_Rasters']['OBS_Data']
@@ -113,8 +111,8 @@ def neon_to_envi(filename,resolution = 1):
 
     map_info = [str(info).strip() for info in map_info]
 
-
-    # Export VNIR to temporary ENVI
+    # Export integer and decimal radiance components
+    # to temporary ENVI files
     rad_dict = envi_header_dict()
     rad_dict['lines']= rad_dec.shape[0]
     rad_dict['samples']= rad_dec.shape[1]
@@ -136,9 +134,8 @@ def neon_to_envi(filename,resolution = 1):
     dec_obj = ht.HyTools()
     dec_obj.read_file(dec_temp, 'envi')
 
-
     # Export radiance
-    ####################################################
+    ##################
     rad_dict = envi_header_dict()
     rad_dict['lines']= new_lines
     rad_dict['samples']= new_cols
@@ -170,7 +167,7 @@ def neon_to_envi(filename,resolution = 1):
     os.remove(int_temp)
 
     # Export observables
-    ####################################################
+    ####################
     obs_dict = envi_header_dict()
     obs_dict['band_names'] = ['path length', 'to-sensor azimuth',
                                 'to-sensor zenith','to-sun azimuth',
@@ -200,7 +197,7 @@ def neon_to_envi(filename,resolution = 1):
         writer.write_band(band,band_num)
 
     # Export location datacube (lon,lat,elevation)
-    ####################################################
+    ##############################################
     loc_dict = envi_header_dict()
     loc_dict['band_names'] = ['Longitude','Latitude','Elevation']
     loc_dict['data type'] = 4
@@ -236,14 +233,3 @@ def neon_to_envi(filename,resolution = 1):
         writer.write_band(band,band_num)
 
     os.remove(filename)
-
-
-
-
-
-
-
-
-
-
-
