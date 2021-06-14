@@ -77,7 +77,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
 
-    temp_dir = '%s/PRISMA_%s/'% (temp_dir,base_name)
+    temp_dir = '%s/PRS_%s/'% (temp_dir,base_name)
     if not os.path.isdir(temp_dir):
         os.mkdir(temp_dir)
 
@@ -97,13 +97,13 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
 
     #Define output paths
     if proj:
-        rad_file = '%sPRISMA_%s_rad_unprj' % (temp_dir,base_name)
-        loc_file = '%sPRISMA_%s_loc_unprj' % (temp_dir,base_name)
-        obs_file = '%sPRISMA_%s_obs_unprj' % (temp_dir,base_name)
+        rad_file = '%sPRS_%s_rad_unprj' % (temp_dir,base_name)
+        loc_file = '%sPRS_%s_loc_unprj' % (temp_dir,base_name)
+        obs_file = '%sPRS_%s_obs_unprj' % (temp_dir,base_name)
     else:
-        loc_file = '%sPRISMA_%s_loc_unprj' % (out_dir,base_name)
-        obs_file = '%sPRISMA_%s_obs_unprj' % (out_dir,base_name)
-        rad_file = '%sPRISMA_%s_rad_unprj' % (out_dir,base_name)
+        loc_file = '%sPRS_%s_loc_unprj' % (out_dir,base_name)
+        obs_file = '%sPRS_%s_obs_unprj' % (out_dir,base_name)
+        rad_file = '%sPRS_%s_rad_unprj' % (out_dir,base_name)
 
     measurement = 'rad'
     logging.info('Exporting radiance data')
@@ -123,7 +123,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
     rad_dict['data type'] = 12
     rad_dict['wavelength units'] = "nanometers"
     rad_dict['byte order'] = 0
-    vnir_temp = '%sPRISMA_-%s_%s_vnir' % (temp_dir,base_name,measurement)
+    vnir_temp = '%sPRS_-%s_%s_vnir' % (temp_dir,base_name,measurement)
 
     writer = WriteENVI(vnir_temp,rad_dict )
     writer.write_chunk(np.moveaxis(vnir_data[:,:,:],1,2), 0,0)
@@ -143,7 +143,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
     rad_dict['data type'] = 12
     rad_dict['wavelength units'] = "nanometers"
     rad_dict['byte order'] = 0
-    swir_temp = '%sPRISMA_%s_%s_swir' % (temp_dir,base_name,measurement)
+    swir_temp = '%sPRS_%s_%s_swir' % (temp_dir,base_name,measurement)
 
     writer = WriteENVI(swir_temp,rad_dict )
     writer.write_chunk(np.moveaxis(swir_data[:,:,:],1,2), 0,0)
@@ -304,7 +304,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
     satellite_df['lat'] = sat_lat
     satellite_df['lon'] = sat_lon
     satellite_df['alt'] = sat_alt
-    satellite_df.to_csv('%sPRISMA_%s_satellite_loc.csv' % (out_dir,base_name))
+    satellite_df.to_csv('%sPRS_%s_satellite_loc.csv' % (out_dir,base_name))
 
     # Convert satellite coords to local ENU
     sat_enu  = np.array(dda2utm(sat_lon,sat_lat,sat_alt,
@@ -318,7 +318,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
                                              np.array([easting,northing,up]))
 
     # Perform image matching
-    if match:
+    if match and proj:
         coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
                                 np.expand_dims(northing.flatten(),axis=1)],axis=1)
         warp_east = easting.min()-100
@@ -334,7 +334,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
         sensor_zn_prj = project.project_band(sensor_zn,-9999)
         elevation_prj = project.project_band(elevation.astype(np.float),-9999)
 
-        rad_file = '%sPRISMA_%s_rad_unprj' % (temp_dir,base_name)
+        rad_file = '%sPRS_%s_rad_unprj' % (temp_dir,base_name)
         radiance = ht.HyTools()
         radiance.read_file(rad_file, 'envi')
 
@@ -414,7 +414,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
 
         logging.info('Georeferencing datasets to %sm resolution' % res)
         for file in ['rad','loc','obs']:
-            input_name = '%sPRISMA_%s_%s_unprj' % (temp_dir,base_name,file)
+            input_name = '%sPRS_%s_%s_unprj' % (temp_dir,base_name,file)
             hy_obj = ht.HyTools()
             hy_obj.read_file(input_name, 'envi')
             iterator =hy_obj.iterate(by = 'band')
@@ -425,7 +425,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
             out_header['data ignore value'] = -9999
             out_header['map info'] = map_info
 
-            output_name = '%sPRISMA_%s_%s_geo' % (out_dir,base_name,file)
+            output_name = '%sPRS_%s_%s_geo' % (out_dir,base_name,file)
             writer = WriteENVI(output_name,out_header)
 
             while not iterator.complete:
