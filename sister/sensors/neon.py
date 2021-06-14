@@ -29,7 +29,7 @@ from skimage.util import view_as_blocks
 import pyproj
 
 def get_neon_radiance(site,date,line,out_dir):
-    '''Given a site, date and line number this scripts retreives the line via
+    '''Given a site, date and line number this scripts retrieves the line via
     the NEON API data portal
 
     Args:
@@ -56,7 +56,6 @@ def get_neon_radiance(site,date,line,out_dir):
         if ('L%03d' % line in file['name']) & (date in file['name']):
             # Download image to disk
             base_name = file['name'].replace('_radiance.h5','')
-
             out_dir = out_dir+  base_name + '/'
             if not os.path.isdir(out_dir):
                 os.mkdir(out_dir)
@@ -74,15 +73,17 @@ def get_neon_radiance(site,date,line,out_dir):
         print('%s %s %s not found' % (site,date,line))
     return filename
 
-def neon_to_envi(filename,resolution = 1):
+def h5_radiance_to_envi(filename,resolution = 1):
     '''Convert a NEON HDF radiance file to ENVI formated
     image along with observables and location data cubes
+
+    TODO: Recalculate terrain azimuth, provided product may be
+    incorrect
 
     Args:
         filename (str): Path to HDF file.
         resolution (int, optional): Output image resolution. Defaults to 1.
-        compress (Bool, optional): Compress file into tar.gz and delete
-                                   uncompressed files. Defaults to True.
+
     Returns:
         None.
 
@@ -123,7 +124,7 @@ def neon_to_envi(filename,resolution = 1):
     dec_temp = filename.replace('radiance.h5','rad_dec')
     writer = WriteENVI(dec_temp,rad_dict )
     writer.write_chunk(rad_dec, 0,0)
-    
+
     int_temp = filename.replace('radiance.h5','rad_int')
     writer = WriteENVI(int_temp,rad_dict )
     writer.write_chunk(rad_int, 0,0)
@@ -199,7 +200,7 @@ def neon_to_envi(filename,resolution = 1):
     # Export location datacube (lon,lat,elevation)
     ##############################################
     loc_dict = envi_header_dict()
-    loc_dict['band_names'] = ['Longitude','Latitude','Elevation']
+    loc_dict['band_names'] = ['longitude','latitude','elevation']
     loc_dict['data type'] = 4
     loc_dict['lines']= new_lines
     loc_dict['samples']= new_cols
