@@ -28,142 +28,62 @@ from isofit.utils import surface_model
 import pandas as pd
 import numpy as np
 
-
 home = os.path.expanduser("~")
 isofit_surface_dir =  '%s/isotest/data/neon/surface/surface_20210215_emit/' % home
+isofit_surface_dir =  '%s/Dropbox/rs/sister/data/isofit/surface_models/surface_20210215_emit/' % home
 windows = [[380.0, 1300.0], [1450, 1780.0], [1950.0, 2450.0]]
 
-def surface_config_gen(surface_data_path,windows,wavelength_file,surface_file,out_config):
+def surface_config_gen(surface_data_path,surface_type,windows,wavelength_file,surface_file,out_config):
     ''' Export surface model config file
-    Args:
-        surface_data_path (TYPE): DESCRIPTION.
-        windows (TYPE): DESCRIPTION.
-        wavelength_file (TYPE): DESCRIPTION.
-        surface_file (TYPE): DESCRIPTION.
-        out_config (TYPE): DESCRIPTION.
-
-    Returns:
-        None.
-
     '''
     surface_config = {}
     surface_config["output_model_file"]= surface_file
     surface_config["wavelength_file"]= wavelength_file
     surface_config["normalize"]="Euclidean"
     surface_config["reference_windows"]= windows
-    surface_config["sources"] = [[] for x in range(4)]
-    surface_config["sources"][0] = {}
-    surface_config["sources"][0]["input_spectrum_files"] = ["%s/filtered_other" % surface_data_path]
-    surface_config["sources"][0]["n_components"] = 1
-    surface_config["sources"][0]["windows"] = [
-                                                {
-                                                  "interval":[300,420],
-                                                  "regularizer":10,
-                                                  "correlation":"decorrelated"
-                                                },
-                                                {
-                                                  "interval":[420,785],
-                                                  "regularizer":10,
-                                                  "correlation":"decorrelated"
-                                                },
-                                                {
-                                                  "interval":[785,1050],
-                                                  "regularizer":1e-6,
-                                                  "correlation":"EM"
-                                                },
-                                                {
-                                                  "interval":[1050,1050],
-                                                  "regularizer":10,
-                                                  "correlation":"decorrelated"
-                                                },
-                                                {
-                                                  "interval":[1050,1250],
-                                                  "regularizer":1e-6,
-                                                  "correlation":"EM"
-                                                },
-                                                {
-                                                  "interval":[1250,2500],
-                                                  "regularizer":10,
-                                                  "correlation":"decorrelated"
-                                                }
-                                              ]
+    if surface_type == 'terrestrial':
 
-    surface_config["sources"][1] = {}
-    surface_config["sources"][1]["input_spectrum_files"] = ["%s/filtered_veg" % surface_data_path]
-    surface_config["sources"][1]["n_components"] = 1
-    surface_config["sources"][1]["windows"]= [
-                                              {
-                                                "interval":[300,420],
-                                                "regularizer":10,
-                                                "correlation":"decorrelated"
-                                              },
-                                              {
-                                                "interval":[420,785],
-                                                "regularizer":10,
-                                                "correlation":"decorrelated"
-                                              },
-                                              {
-                                                "interval":[785,1050],
-                                                "regularizer":1e-6,
-                                                "correlation":"EM"
-                                              },
-                                              {
-                                                "interval":[1050,1050],
-                                                "regularizer":10,
-                                                "correlation":"decorrelated"
-                                              },
-                                              {
-                                                "interval":[1050,1250],
-                                                "regularizer":1e-6,
-                                                "correlation":"EM"
-                                              },
-                                              {
-                                                "interval":[1250,2500],
-                                                "regularizer":10,
-                                                "correlation":"decorrelated"
-                                              }
-                                            ]
+        surface_config["sources"] = [[] for x in range(4)]
+        surface_config["sources"][0] = {}
+        surface_config["sources"][0]["input_spectrum_files"] = ["%s/filtered_other" % surface_data_path]
+        surface_config["sources"][0]["n_components"] = 1
+        surface_config["sources"][0]["windows"] = [
+                                                    {
+                                                      "interval":[300,420],
+                                                      "regularizer":10,
+                                                      "correlation":"decorrelated"
+                                                    },
+                                                    {
+                                                      "interval":[420,785],
+                                                      "regularizer":10,
+                                                      "correlation":"decorrelated"
+                                                    },
+                                                    {
+                                                      "interval":[785,1050],
+                                                      "regularizer":1e-6,
+                                                      "correlation":"EM"
+                                                    },
+                                                    {
+                                                      "interval":[1050,1050],
+                                                      "regularizer":10,
+                                                      "correlation":"decorrelated"
+                                                    },
+                                                    {
+                                                      "interval":[1050,1250],
+                                                      "regularizer":1e-6,
+                                                      "correlation":"EM"
+                                                    },
+                                                    {
+                                                      "interval":[1250,2500],
+                                                      "regularizer":10,
+                                                      "correlation":"decorrelated"
+                                                    }
+                                                  ]
 
-
-    surface_config["sources"][2] = {}
-    surface_config["sources"][2]["input_spectrum_files"] = ["%s/filtered_ocean" % surface_data_path]
-    surface_config["sources"][2]["n_components"] = 1
-    surface_config["sources"][2]["windows"] = [
-                                              {
-                                                "interval":[300,420],
-                                                "regularizer":10,
-                                                "correlation":"decorrelated"
-                                              },
-                                              {
-                                                "interval":[420,785],
-                                                "regularizer":10,
-                                                "correlation":"decorrelated"
-                                              },
-                                              {
-                                                "interval":[785,1050],
-                                                "regularizer":1e-6,
-                                                "correlation":"EM"
-                                              },
-                                              {
-                                                "interval":[1050,1050],
-                                                "regularizer":10,
-                                                "correlation":"decorrelated"
-                                              },
-                                              {
-                                                "interval":[1050,1250],
-                                                "regularizer":1e-6,
-                                                "correlation":"EM"
-                                              },
-                                              {
-                                                "interval":[1250,2500],
-                                                "regularizer":10,
-                                                "correlation":"decorrelated"
-                                              }
-                                            ]
-    surface_config["sources"][3] = {}
-    surface_config["sources"][3]["input_spectrum_files"] = ["%s/surface_Liquids" % surface_data_path]
-    surface_config["sources"][3]["n_components"] = 2
-    surface_config["sources"][3]["windows"] =  [
+        surface_config["sources"][1] = {}
+        surface_config["sources"][1]["input_spectrum_files"] = ["%s/filtered_veg" % surface_data_path]
+        surface_config["sources"][1]["n_components"] = 1
+        surface_config["sources"][1]["windows"]= [
                                                   {
                                                     "interval":[300,420],
                                                     "regularizer":10,
@@ -195,106 +115,124 @@ def surface_config_gen(surface_data_path,windows,wavelength_file,surface_file,ou
                                                     "correlation":"decorrelated"
                                                   }
                                                 ]
-    with open(out_config, 'w') as outfile:
-        json.dump(surface_config,outfile,indent=3)
-
-def surface_config_gen_decorr(surface_data_path,windows,wavelength_file,surface_file,out_config):
-
-    surface_config = {}
-    surface_config["output_model_file"]= surface_file
-    surface_config["wavelength_file"]= wavelength_file
-    surface_config["normalize"]="Euclidean"
-    surface_config["reference_windows"]= windows
-    surface_config["sources"] = [[] for x in range(4)]
-
-    surface_config["sources"][0] = {}
-    surface_config["sources"][0]["input_spectrum_files"] = ["%s/filtered_other" % surface_data_path]
-    surface_config["sources"][0]["n_components"] = 1
-    surface_config["sources"][0]["windows"] = [
-                                                {
-                                                  "interval":[300,2500],
-                                                  "regularizer":10,
-                                                  "correlation":"decorrelated"
-                                                }
-                                              ]
-
-    surface_config["sources"][1] = {}
-    surface_config["sources"][1]["input_spectrum_files"] = ["%s/filtered_veg" % surface_data_path]
-    surface_config["sources"][1]["n_components"] = 1
-    surface_config["sources"][1]["windows"]= [
-                                                 {
-                                                  "interval":[300,2500],
-                                                  "regularizer":10,
-                                                  "correlation":"decorrelated"
-                                                }
-                                            ]
 
 
-    surface_config["sources"][2] = {}
-    surface_config["sources"][2]["input_spectrum_files"] = ["%s/filtered_ocean" % surface_data_path]
-    surface_config["sources"][2]["n_components"] = 1
-    surface_config["sources"][2]["windows"] = [
-                                                {
-                                                  "interval":[300,2500],
-                                                  "regularizer":10,
-                                                  "correlation":"decorrelated"
-                                                }
-                                            ]
-    surface_config["sources"][3] = {}
-    surface_config["sources"][3]["input_spectrum_files"] = ["%s/surface_Liquids" % surface_data_path]
-    surface_config["sources"][3]["n_components"] = 2
-    surface_config["sources"][3]["windows"] =  [
-                                                {
-                                                  "interval":[300,2500],
-                                                  "regularizer":10,
-                                                  "correlation":"decorrelated"
-                                                }
+        surface_config["sources"][2] = {}
+        surface_config["sources"][2]["input_spectrum_files"] = ["%s/filtered_ocean" % surface_data_path]
+        surface_config["sources"][2]["n_components"] = 1
+        surface_config["sources"][2]["windows"] = [
+                                                  {
+                                                    "interval":[300,420],
+                                                    "regularizer":10,
+                                                    "correlation":"decorrelated"
+                                                  },
+                                                  {
+                                                    "interval":[420,785],
+                                                    "regularizer":10,
+                                                    "correlation":"decorrelated"
+                                                  },
+                                                  {
+                                                    "interval":[785,1050],
+                                                    "regularizer":1e-6,
+                                                    "correlation":"EM"
+                                                  },
+                                                  {
+                                                    "interval":[1050,1050],
+                                                    "regularizer":10,
+                                                    "correlation":"decorrelated"
+                                                  },
+                                                  {
+                                                    "interval":[1050,1250],
+                                                    "regularizer":1e-6,
+                                                    "correlation":"EM"
+                                                  },
+                                                  {
+                                                    "interval":[1250,2500],
+                                                    "regularizer":10,
+                                                    "correlation":"decorrelated"
+                                                  }
+                                                ]
+        surface_config["sources"][3] = {}
+        surface_config["sources"][3]["input_spectrum_files"] = ["%s/surface_Liquids" % surface_data_path]
+        surface_config["sources"][3]["n_components"] = 2
+        surface_config["sources"][3]["windows"] =  [
+                                                      {
+                                                        "interval":[300,420],
+                                                        "regularizer":10,
+                                                        "correlation":"decorrelated"
+                                                      },
+                                                      {
+                                                        "interval":[420,785],
+                                                        "regularizer":10,
+                                                        "correlation":"decorrelated"
+                                                      },
+                                                      {
+                                                        "interval":[785,1050],
+                                                        "regularizer":1e-6,
+                                                        "correlation":"EM"
+                                                      },
+                                                      {
+                                                        "interval":[1050,1050],
+                                                        "regularizer":10,
+                                                        "correlation":"decorrelated"
+                                                      },
+                                                      {
+                                                        "interval":[1050,1250],
+                                                        "regularizer":1e-6,
+                                                        "correlation":"EM"
+                                                      },
+                                                      {
+                                                        "interval":[1250,2500],
+                                                        "regularizer":10,
+                                                        "correlation":"decorrelated"
+                                                      }
+                                                    ]
+
+    elif surface_type == 'decorr':
+
+        surface_config["sources"][0] = {}
+        surface_config["sources"][0]["input_spectrum_files"] = ["%s/filtered_other" % surface_data_path]
+        surface_config["sources"][0]["n_components"] = 1
+        surface_config["sources"][0]["windows"] = [
+                                                    {
+                                                      "interval":[300,2500],
+                                                      "regularizer":10,
+                                                      "correlation":"decorrelated"
+                                                    }
+                                                  ]
+
+        surface_config["sources"][1] = {}
+        surface_config["sources"][1]["input_spectrum_files"] = ["%s/filtered_veg" % surface_data_path]
+        surface_config["sources"][1]["n_components"] = 1
+        surface_config["sources"][1]["windows"]= [
+                                                     {
+                                                      "interval":[300,2500],
+                                                      "regularizer":10,
+                                                      "correlation":"decorrelated"
+                                                    }
                                                 ]
 
-    with open(out_config, 'w') as outfile:
-        json.dump(surface_config,outfile,indent=3)
 
-
-def surface_config_gen_water(surface_data_path,windows,wavelength_file,surface_file,out_config):
-
-    surface_config = {}
-    surface_config["output_model_file"]= surface_file
-    surface_config["wavelength_file"]= wavelength_file
-    surface_config["normalize"]="Euclidean"
-    surface_config["reference_windows"]= windows
-    surface_config["sources"] = [[] for x in range(1)]
-
-    surface_config["sources"][0] = {}
-    surface_config["sources"][0]["input_spectrum_files"] = ["%s/ocean_spectra_rev2" % surface_data_path]
-    surface_config["sources"][0]["n_components"] = 8
-    surface_config["sources"][0]["windows"] = [
-                                                {
-                                                  "interval":[350,370],
-                                                  "regularizer":1e-4,
-                                                  "correlation":"decorrelated"
-                                                },
-                                                {
-                                                  "interval":[370,100],
-                                                  "regularizer":1e-6,
-                                                  "correlation":"EM"
-                                                },
-                                                {
-                                                  "interval":[400,750],
-                                                  "regularizer":1e-6,
-                                                  "correlation":"EM"
-                                                },
-                                                {
-                                                  "interval":[750,1000],
-                                                  "regularizer":1e-6,
-                                                  "correlation":"EM"
-                                                },
-                                                {
-                                                  "interval":[1000,1200],
-                                                  "regularizer":1e-4,
-                                                  "correlation":"decorrelated"
-                                                }
-
-                                              ]
+        surface_config["sources"][2] = {}
+        surface_config["sources"][2]["input_spectrum_files"] = ["%s/filtered_ocean" % surface_data_path]
+        surface_config["sources"][2]["n_components"] = 1
+        surface_config["sources"][2]["windows"] = [
+                                                    {
+                                                      "interval":[300,2500],
+                                                      "regularizer":10,
+                                                      "correlation":"decorrelated"
+                                                    }
+                                                ]
+        surface_config["sources"][3] = {}
+        surface_config["sources"][3]["input_spectrum_files"] = ["%s/surface_Liquids" % surface_data_path]
+        surface_config["sources"][3]["n_components"] = 2
+        surface_config["sources"][3]["windows"] =  [
+                                                    {
+                                                      "interval":[300,2500],
+                                                      "regularizer":10,
+                                                      "correlation":"decorrelated"
+                                                    }
+                                                    ]
 
     with open(out_config, 'w') as outfile:
         json.dump(surface_config,outfile,indent=3)
@@ -315,11 +253,12 @@ def gen_wavelength_file(rad_file,out_dir):
     return wavelength_file
 
 
-def run_isofit(in_dir,out_dir,temp_dir,segment_size=500,surface_type = 'multi'):
+def run_isofit(in_dir,out_dir,temp_dir,segment_size=15,surface_type = 'terrestrial'):
 
-    in_dir = '/home/chlus/data/prisma/rad/PRISMA_20200621003500_20200621003505_0001/'
-    out_dir = '/home/chlus/data/prisma/rfl/PRISMA_20200621003500_20200621003505_0001/'
-    temp_dir = '/home/chlus/data/temp/PRISMA_20200621003500_20200621003505_0001/'
+    # Testing
+    # in_dir =  '/data2/prisma/rad/PRS_20210616165230_20210616165235_0001_flat/'
+    # out_dir = '/data2/prisma/rfl/PRS_20210616165230_20210616165235_0001_flat/'
+    # temp_dir = '/data2/temp/PRS_20210616165230_20210616165235_0001_flat/'
 
     #Don't like how this is implemented...works for now
     rad_files = glob.glob("%s/*_rad_*" % in_dir)
@@ -331,7 +270,7 @@ def run_isofit(in_dir,out_dir,temp_dir,segment_size=500,surface_type = 'multi'):
 
     base_name = os.path.basename(rad_files[0])
 
-    if base_name.startswith('PRISMA'):
+    if base_name.startswith('PRS'):
         date  = base_name.split('_')[1][:8]
         base_name = '_'.join(base_name.split('_')[:4])
     elif base_name.startswith('DESIS'):
@@ -354,30 +293,31 @@ def run_isofit(in_dir,out_dir,temp_dir,segment_size=500,surface_type = 'multi'):
     surface_file = '%s/surface_filtered.mat'% temp_dir
     wavelength_file  = gen_wavelength_file(rad_files[0],temp_dir)
 
-    if surface_type == 'multi':
-        surface_config_gen(isofit_surface_dir,
-                           windows,
-                           wavelength_file,
-                           surface_file,
-                           surface_config)
+    surface_config_gen(isofit_surface_dir,
+                       surface_type,
+                       windows,
+                       wavelength_file,
+                       surface_file,
+                       surface_config)
 
     surface_model(surface_config)
 
     apply_oe  = ['python']
-    apply_oe.append('/home/chlus/isotest/isofit/isofit/utils/apply_oe.py')
+    apply_oe.append('%s/Dropbox/rs/sister/algorithms/atc/isofit/isofit/utils//apply_oe.py' % home)
     apply_oe.append(rad_files[0])
     apply_oe.append(loc_files[0])
     apply_oe.append(obs_files[0])
     apply_oe.append(temp_dir)
     apply_oe.append('NA-%s' % date)
     apply_oe += ['--surface_path', surface_file]
-    apply_oe += ['--n_cores','48']
+    apply_oe += ['--n_cores','8']
     apply_oe += ['--empirical_line','1']
     apply_oe += ['--presolve','1']
-    apply_oe += ['--ray_temp_dir','/home/chlus/isotest/data/temp/']
-    apply_oe += ['--log_file','/home/chlus/isotest/%s_logfile' % base_name]
-    apply_oe += ['--emulator_base','/home/chlus/isotest/data/emulator/sRTMnet_v100']
     apply_oe += ['--segment_size',str(segment_size)]
+    apply_oe += ['--ray_temp_dir',temp_dir]
+    apply_oe += ['--log_file','%s/%s_logfile' % (out_dir,base_name)]
+    apply_oe += ['--rdn_factors_path',"%s/Dropbox/rs/sister/sister/data/prisma/radiance_factors/PRISMA_20200721104249_20200721104253_0001_radiance_factors.txt" % (home)]
+    apply_oe += ['--emulator_base','/data1/isofit/sRTMnet/sRTMnet_v100']
 
     apply = subprocess.Popen(apply_oe)
     apply.wait()
