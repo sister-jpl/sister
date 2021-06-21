@@ -306,19 +306,16 @@ def pathlength(sat_xyz,grd_xyz):
 def sensor_view_angles(sat_enu,grd_enu):
     '''Calculates sensor zenith and azimuth angle
     in degrees
-
-    TODO: Confirm correct results in all
     '''
-
 
     p = (sat_enu[:,:,np.newaxis]-grd_enu)/pathlength(sat_enu,grd_enu)
     sensor_zn = 90-np.degrees(np.arcsin(p[2]))
     sensor_az = np.degrees(np.arctan(p[0]/p[1]))
 
     DX,DY,DZ= grd_enu - sat_enu[:,:,np.newaxis]
-    sensor_az[(DX>0) & (DY>0)]= 180-sensor_az[(DX>0) & (DY>0)]
-    sensor_az[(DX>0) & (DY<0)]= 360+sensor_az[(DX>0) & (DY<0)]
-    sensor_az[(DX<0) & (DY>0)]= 180+sensor_az[(DX<0) & (DY>0)]
+    sensor_az[(DX>0) & (DY>0)]= 180+sensor_az[(DX>0) & (DY>0)]
+    sensor_az[(DX>0) & (DY<=0)]= 360+sensor_az[(DX>0) & (DY<=0)]
+    sensor_az[(DX<0) & (DY>=0)]= 180+sensor_az[(DX<0) & (DY>=0)]
 
     return sensor_zn,sensor_az
 
@@ -328,8 +325,7 @@ def pairwise(iterable):
     next(b, None)
     return zip(a, b)
 
-
-def get_landsat_image(longitude,latitude,month,max_cloud = 5):
+def get_landsat_image(longitude,latitude,month,max_cloud = 5,band=5):
     '''Given a set of coordinates and a month this function uses
     Google Earth Engine to generate a landsat scene using scenes from
     +/- 1 month of the input month
@@ -355,7 +351,7 @@ def get_landsat_image(longitude,latitude,month,max_cloud = 5):
     landsat8_bounds = landsat8.filterBounds(bounds)
     landsat8_month = landsat8_bounds.filter(ee.Filter.calendarRange(month-1,month+1,'month'))
     landsat8_cloud = landsat8_month.filterMetadata('CLOUD_COVER','less_than',max_cloud).sort('CLOUDY_PIXEL_PERCENTAGE')
-    landsat_mean = landsat8_cloud.select('B5').mean()
+    landsat_mean = landsat8_cloud.select('B%s' % band).mean()
     latlon = ee.Image.pixelLonLat().addBands(landsat_mean)
 
     lats = []
@@ -378,7 +374,7 @@ def get_landsat_image(longitude,latitude,month,max_cloud = 5):
                               reducer=ee.Reducer.toList(),
                               geometry=mini_bounds,
                               scale=30)
-            values+= np.array((ee.Array(latlon_reducer.get("B5")).getInfo())).tolist()
+            values+= np.array((ee.Array(latlon_reducer.get("B%s" % band)).getInfo())).tolist()
             lats += np.array((ee.Array(latlon_reducer.get("latitude")).getInfo())).tolist()
             lons+= np.array((ee.Array(latlon_reducer.get("longitude")).getInfo())).tolist()
 
@@ -403,6 +399,3 @@ def get_landsat_image(longitude,latitude,month,max_cloud = 5):
     values_prj = project.project_band(np.expand_dims(values.flatten(),axis=1),-9999)
 
     return values_prj,ulx,uly
-
-
-
