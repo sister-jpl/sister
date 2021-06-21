@@ -30,14 +30,12 @@ from hytools.io.envi import WriteENVI,envi_header_dict
 from hytools.topo.topo import calc_cosine_i
 import numpy as np
 from scipy.interpolate import interp1d
-import pyproj
 from pysolar import solar
 from skimage.util import view_as_blocks
 from scipy.ndimage import uniform_filter
 from ..utils.terrain import *
 from ..utils.geometry import *
 from ..utils.ancillary import *
-
 
 home = os.path.expanduser("~")
 
@@ -191,6 +189,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
                 chunk_s = swir_interpolator(swir_waves)
 
                 line = np.concatenate([chunk_v,chunk_s],axis=1)/1000.
+
             else:
                 line = np.concatenate([chunk_v,chunk_s],axis=1)[2:-2,:]/1000.
             writer.write_line(line, iterator_v.current_line-2)
@@ -257,8 +256,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
 
     # Convert satellite GPS position time to UTC
     sat_t = []
-    for second,week in  zip(pvs['GPS_Time_of_Last_Position'][:].flatten(),pvs['Week_Number'][:].flatten()):
-        gps_second = (week*7*24*60*60) + second
+    for second,week in zip(pvs['GPS_Time_of_Last_Position'][:].flatten(),pvs['Week_Number'][:].flatten()):
+        gps_second = week*7*24*60*60 + second
         gps_epoch = dt.datetime(1980, 1, 6)
         gps_time  = gps_epoch+ dt.timedelta(seconds=gps_second - 17)
         sat_t.append(gps_time.hour*3600 + gps_time.minute*60. + gps_time.second)
@@ -339,13 +338,15 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
         radiance.read_file(rad_file, 'envi')
 
         #Average over Landsat 8 Band 5 bandwidth and warp
-        warp_band = np.zeros(longitude.shape)
+        unwarp_band = np.zeros(longitude.shape)
         for wave in range(850,890,10):
-            warp_band += radiance.get_wave(wave)/7.
-        warp_band = project.project_band(warp_band,-9999)
+            unwarp_band += radiance.get_wave(wave)/7.
+        warp_band = project.project_band(unwarp_band,-9999)
         warp_band = 16000*(warp_band-warp_band.min())/warp_band.max()
 
-        landsat,land_east,land_north = get_landsat_image(longitude,latitude,mean_time.month,max_cloud = 5)
+        landsat,land_east,land_north = get_landsat_image(longitude,latitude,
+                                                         mean_time.month,
+                                                         max_cloud = 5)
 
         #Calculate offsets between reference and input images
         offset_x = int((warp_east-land_east)//pixel_size)
