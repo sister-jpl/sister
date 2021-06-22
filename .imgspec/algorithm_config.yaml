@@ -1,0 +1,17 @@
+algo_name: sister
+version: sister-dev
+environment: ubuntu
+repository_url: https://gitlab.com/geospec/sister.git
+docker_url: TBD
+# fill out these fields
+# explain what this algorithm does
+description: Converts PRISMA Radiance data from HDF to ENVI
+# path to the wrapper script for running the algorithm
+run_command: sister/.imgspec/imgspec_run.sh
+# set a storage value in GB or MB or KB, e.g. "100GB", "20MB", "10KB"
+disk_space: 30GB
+inputs:
+  - name: radiance_file
+    type: file
+  - name: elevation_data_url
+    type: positional
