@@ -229,6 +229,9 @@ def geotiff_to_envi(base_name,l1b_zip,out_dir,temp_dir,elev_dir,
     rad_dict ['wavelength units'] = "nanometers"
     rad_dict ['byte order'] = 0
     rad_dict ['data ignore value'] = -9999
+    rad_dict ['default bands'] = [vnir_obj.wave_to_band(660),
+                                  vnir_obj.wave_to_band(560),
+                                  vnir_obj.wave_to_band(460)]
 
     #Define output paths
     if proj:
@@ -315,7 +318,7 @@ def geotiff_to_envi(base_name,l1b_zip,out_dir,temp_dir,elev_dir,
                                              np.array([easting,northing,up]))
 
 
-    if match:
+    if match and proj:
         coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
                                 np.expand_dims(northing.flatten(),axis=1)],axis=1)
         warp_east = easting.min()-100
