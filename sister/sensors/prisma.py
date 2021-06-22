@@ -174,6 +174,9 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
     rad_dict ['data type'] = 4
     rad_dict ['wavelength units'] = "nanometers"
     rad_dict ['byte order'] = 0
+    rad_dict ['default bands'] = [vnir_obj.wave_to_band(660),
+                                  vnir_obj.wave_to_band(560),
+                                  vnir_obj.wave_to_band(460)]
 
     writer = WriteENVI(rad_file,rad_dict)
     iterator_v =vnir_obj.iterate(by = 'line')
