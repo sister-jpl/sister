@@ -64,7 +64,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
     temp_dir(str): Temporary directory for intermediate
     elev_dir (str): Directory zipped Copernicus elevation tiles
     shift (str) : Pathname of wavelength shift correction surface file
-    match (str or list) : Pathname to Landsat image for image re-registration (recommended)
+    match (bool) : Perform landsat image matching
     proj (bool) : Project image to UTM grid
     res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)
 
@@ -72,8 +72,14 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
 
     base_name = os.path.basename(l1_zip)[16:-4]
 
+    out_dir = '%s/PRS_%s/'% (out_dir,base_name)
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
+
+    logging.basicConfig(filename='%s/PRS_%s.log' % (out_dir,base_name),
+            format='%(asctime)s: %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S',
+            level=logging.NOTSET)
 
     temp_dir = '%s/PRS_%s/'% (temp_dir,base_name)
     if not os.path.isdir(temp_dir):
@@ -317,7 +323,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
                                              np.array([easting,northing,up]))
 
     # Perform image matching
-    if match and proj:
+    if match:
         coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
                                 np.expand_dims(northing.flatten(),axis=1)],axis=1)
         warp_east = easting.min()-100
