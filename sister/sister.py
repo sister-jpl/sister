@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
-import logging
 from multiprocessing import cpu_count
 import shutil
 import subprocess
@@ -29,7 +28,6 @@ import numpy as np
 from .sensors import prisma ,desis
 from .utils.isofit import gen_wavelength_file,surface_config_gen,get_surface_spectra
 from .utils.misc import download_file
-import yaml
 
 class Sister:
     def __init__(self,base_name,configs):
