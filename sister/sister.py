@@ -4,7 +4,20 @@
 SISTER
 Space-based Imaging Spectroscopy and Thermal PathfindER
 Author: Adam Chlus
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3 of the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 import os
 import logging
 from multiprocessing import cpu_count
@@ -13,7 +26,7 @@ import subprocess
 import hytools as ht
 from isofit.utils import surface_model
 import numpy as np
-from .sensors import prisma # ,desis
+from .sensors import prisma ,desis
 from .utils.isofit import gen_wavelength_file,surface_config_gen,get_surface_spectra
 from .utils.misc import download_file
 import yaml
@@ -81,22 +94,23 @@ class Sister:
             print('Radiance data not found, generating radiance datasets')
             self.radiance()
 
-        rfl_temp = self.tmp_dir + '%s_isofit/' % self.base_name
-        if not os.path.isdir(rfl_temp):
-            os.mkdir(rfl_temp)
+        rfl_tmp = self.tmp_dir + '%s_isofit/' % self.base_name
+
+        if not os.path.isdir(rfl_tmp):
+            os.mkdir(rfl_tmp)
         else:
-            shutil.rmtree(rfl_temp)
-            os.mkdir(rfl_temp)
+            shutil.rmtree(rfl_tmp)
+            os.mkdir(rfl_tmp)
 
         for key in self.isofit['surface']:
-            get_surface_spectra(rfl_temp + key,
+            get_surface_spectra(rfl_tmp + key,
                                 self.isofit['surface'][key])
 
-        surface_config = "%s/surface_config.json" % rfl_temp
-        surface_file = '%s/surface_filtered.mat'% rfl_temp
+        surface_config = "%s/surface_config.json" % rfl_tmp
+        surface_file = '%s/surface_filtered.mat'% rfl_tmp
         wavelength_file = gen_wavelength_file(self.rdn_file,
-                                               rfl_temp)
-        surface_config_gen(rfl_temp,
+                                               rfl_tmp)
+        surface_config_gen(rfl_tmp,
                            self.isofit['surface_type'],
                            self.isofit['windows'],
                            wavelength_file,
@@ -110,7 +124,7 @@ class Sister:
         apply_oe.append(self.rdn_file)
         apply_oe.append(self.loc_file)
         apply_oe.append(self.obs_file)
-        apply_oe.append(rfl_temp)
+        apply_oe.append(rfl_tmp)
 
         if self.sensor in ['prisma','desis']:
             apply_oe.append('NA-%s' % self.date)
@@ -119,12 +133,12 @@ class Sister:
         apply_oe += ['--empirical_line','1']
         apply_oe += ['--presolve','1']
         apply_oe += ['--segment_size', str(self.isofit['segment_size'])]
-        apply_oe += ['--ray_temp_dir',rfl_temp]
-        apply_oe += ['--log_file','%s/%s_logfile' % (rfl_temp,self.base_name)]
+        apply_oe += ['--ray_temp_dir',rfl_tmp]
+        apply_oe += ['--log_file','%s/%s_logfile' % (rfl_tmp,self.base_name)]
         apply_oe += ['--emulator_base',self.isofit['emulator']]
 
         if self.isofit['radiance_factors']:
-            rad_factors = "%s/radiance_factors.txt" % rfl_temp
+            rad_factors = "%s/radiance_factors.txt" % rfl_tmp
             download_file(rad_factors,self.isofit['radiance_factors'])
             apply_oe += ['--rdn_factors_path',rad_factors]
 
@@ -135,8 +149,8 @@ class Sister:
             os.mkdir("%s/%s" % (self.rfl_dir,self.base_name))
 
         # Mask windows and rename ISOFIT output files
-        rfl = '%s/output/%s_rfl_prj_rfl'% (rfl_temp,self.base_name)
-        uncert = '%s/output/%s_uncert_prj_uncert'% (rfl_temp,self.base_name)
+        rfl = '%s/output/%s_rfl_prj_rfl'% (rfl_tmp,self.base_name)
+        uncert = '%s/output/%s_uncert_prj_uncert'% (rfl_tmp,self.base_name)
 
         for new,old in [(self.rfl_file,rfl),(self.unc_file,uncert)]:
             hy_obj = ht.HyTools()
@@ -144,7 +158,7 @@ class Sister:
             mask = []
             for wave in hy_obj.wavelengths:
                 window = False
-                for start,end in test.isofit['windows']:
+                for start,end in self.isofit['windows']:
                     if (wave>start) and (wave<end):
                         window |= True
                 mask.append(window)
