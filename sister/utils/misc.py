@@ -18,7 +18,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from .terrain import *
-from .geometry import *
-from .ancillary import *
-from .misc import *
+import requests
+
+
+def download_file(file,url)
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        with open(file, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=int(1E8)):
+                f.write(chunk)
