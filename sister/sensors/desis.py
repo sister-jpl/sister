@@ -25,7 +25,10 @@ import logging
 import shutil
 import zipfile
 import xml.etree.ElementTree as ET
-import gdal
+try:
+    import gdal
+except:
+    from osgeo import gdal
 import hytools as ht
 from hytools.io.envi import WriteENVI,envi_header_dict
 from hytools.topo.topo import calc_cosine_i
