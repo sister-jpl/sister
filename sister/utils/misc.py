@@ -20,8 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import requests
 
-
-def download_file(file,url)
+def download_file(file,url):
     with requests.get(url, stream=True) as r:
         r.raise_for_status()
         with open(file, 'wb') as f:
