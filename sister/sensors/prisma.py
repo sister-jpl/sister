@@ -36,13 +36,14 @@ from scipy.ndimage import uniform_filter
 from ..utils.terrain import *
 from ..utils.geometry import *
 from ..utils.ancillary import *
+from ..utils.misc import download_file
 
 home = os.path.expanduser("~")
 
 def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj = False,res = 30):
     '''
     This function exports three files:
-        *_rad* : Merged and optionally shift corrected radiance cube
+        *_rdn* : Merged and optionally shift corrected radiance cube
         *_obs* : Observables file in the format of JPL obs files:
                 1. Pathlength (m)
                 2. To-sensor view azimuth angle (degrees)
@@ -67,7 +68,6 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
     match (bool) : Perform landsat image matching
     proj (bool) : Project image to UTM grid
     res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)
-
     '''
 
     base_name = os.path.basename(l1_zip)[16:-4]
@@ -94,22 +94,25 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
 
     shift_correct = False
     if shift:
+        shift_file = temp_dir + 'shift_surface'
+        download_file(shift_file,shift)
+        download_file(shift_file + '.hdr',shift + '.hdr')
         shift_obj = ht.HyTools()
-        shift_obj.read_file(shift, 'envi')
+        shift_obj.read_file(shift_file, 'envi')
         shift_surf_smooth = shift_obj.get_band(0)
         shift_correct = True
 
     #Define output paths
     if proj:
-        rad_file = '%sPRS_%s_rad_unprj' % (temp_dir,base_name)
-        loc_file = '%sPRS_%s_loc_unprj' % (temp_dir,base_name)
-        obs_file = '%sPRS_%s_obs_unprj' % (temp_dir,base_name)
+        rdn_file = '%sPRS_%s_rdn' % (temp_dir,base_name)
+        loc_file = '%sPRS_%s_loc' % (temp_dir,base_name)
+        obs_file = '%sPRS_%s_obs' % (temp_dir,base_name)
     else:
-        loc_file = '%sPRS_%s_loc_unprj' % (out_dir,base_name)
-        obs_file = '%sPRS_%s_obs_unprj' % (out_dir,base_name)
-        rad_file = '%sPRS_%s_rad_unprj' % (out_dir,base_name)
+        loc_file = '%sPRS_%s_loc' % (out_dir,base_name)
+        obs_file = '%sPRS_%s_obs' % (out_dir,base_name)
+        rdn_file = '%sPRS_%s_rdn' % (out_dir,base_name)
 
-    measurement = 'rad'
+    measurement = 'rdn'
     logging.info('Exporting radiance data')
 
     # Export VNIR to temporary ENVI
@@ -117,19 +120,19 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
     vnir_waves = l1_obj.attrs.get('List_Cw_Vnir')
     vnir_fwhm = l1_obj.attrs.get('List_Fwhm_Vnir')
 
-    rad_dict = envi_header_dict ()
-    rad_dict['lines']= vnir_data.shape[0]
-    rad_dict['samples']= vnir_data.shape[2]
-    rad_dict['bands']=  vnir_data.shape[1]
-    rad_dict['wavelength']= vnir_waves
-    rad_dict['fwhm']= vnir_fwhm
-    rad_dict['interleave']= 'bsq'
-    rad_dict['data type'] = 12
-    rad_dict['wavelength units'] = "nanometers"
-    rad_dict['byte order'] = 0
+    rdn_dict = envi_header_dict ()
+    rdn_dict['lines']= vnir_data.shape[0]
+    rdn_dict['samples']= vnir_data.shape[2]
+    rdn_dict['bands']=  vnir_data.shape[1]
+    rdn_dict['wavelength']= vnir_waves
+    rdn_dict['fwhm']= vnir_fwhm
+    rdn_dict['interleave']= 'bsq'
+    rdn_dict['data type'] = 12
+    rdn_dict['wavelength units'] = "nanometers"
+    rdn_dict['byte order'] = 0
     vnir_temp = '%sPRS_-%s_%s_vnir' % (temp_dir,base_name,measurement)
 
-    writer = WriteENVI(vnir_temp,rad_dict )
+    writer = WriteENVI(vnir_temp,rdn_dict )
     writer.write_chunk(np.moveaxis(vnir_data[:,:,:],1,2), 0,0)
 
     # Export SWIR to temporary ENVI
@@ -137,19 +140,14 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
     swir_waves = l1_obj.attrs.get('List_Cw_Swir')
     swir_fwhm = l1_obj.attrs.get('List_Fwhm_Swir')
 
-    rad_dict = envi_header_dict ()
-    rad_dict['lines']= swir_data.shape[0]
-    rad_dict['samples']= swir_data.shape[2]
-    rad_dict['bands']=  swir_data.shape[1]
-    rad_dict['wavelength']= swir_waves
-    rad_dict['fwhm']= swir_fwhm
-    rad_dict['interleave']= 'bil'
-    rad_dict['data type'] = 12
-    rad_dict['wavelength units'] = "nanometers"
-    rad_dict['byte order'] = 0
+    rdn_dict['lines']= swir_data.shape[0]
+    rdn_dict['samples']= swir_data.shape[2]
+    rdn_dict['bands']=  swir_data.shape[1]
+    rdn_dict['wavelength']= swir_waves
+    rdn_dict['fwhm']= swir_fwhm
     swir_temp = '%sPRS_%s_%s_swir' % (temp_dir,base_name,measurement)
 
-    writer = WriteENVI(swir_temp,rad_dict )
+    writer = WriteENVI(swir_temp,rdn_dict )
     writer.write_chunk(np.moveaxis(swir_data[:,:,:],1,2), 0,0)
 
     vnir_waves = np.flip(vnir_waves[3:]) #6
@@ -164,21 +162,21 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
     swir_obj = ht.HyTools()
     swir_obj.read_file(swir_temp, 'envi')
 
-    rad_dict  = envi_header_dict()
-    rad_dict ['lines']= vnir_obj.lines-4 #Clip edges of array
-    rad_dict ['samples']=vnir_obj.columns-4  #Clip edges of array
-    rad_dict ['bands']= len(vnir_waves.tolist() + swir_waves.tolist())
-    rad_dict ['wavelength']= vnir_waves.tolist() + swir_waves.tolist()
-    rad_dict ['fwhm']= vnir_fwhm.tolist() + swir_fwhm.tolist()
-    rad_dict ['interleave']= 'bil'
-    rad_dict ['data type'] = 4
-    rad_dict ['wavelength units'] = "nanometers"
-    rad_dict ['byte order'] = 0
-    rad_dict ['default bands'] = [vnir_obj.wave_to_band(660),
-                                  vnir_obj.wave_to_band(560),
-                                  vnir_obj.wave_to_band(460)]
+    rdn_dict  = envi_header_dict()
+    rdn_dict ['lines']= vnir_obj.lines-4 #Clip edges of array
+    rdn_dict ['samples']=vnir_obj.columns-4  #Clip edges of array
+    rdn_dict ['bands']= len(vnir_waves.tolist() + swir_waves.tolist())
+    rdn_dict ['wavelength']= vnir_waves.tolist() + swir_waves.tolist()
+    rdn_dict ['fwhm']= vnir_fwhm.tolist() + swir_fwhm.tolist()
+    rdn_dict ['interleave']= 'bil'
+    rdn_dict ['data type'] = 4
+    rdn_dict ['wavelength units'] = "nanometers"
+    rdn_dict ['byte order'] = 0
+    rdn_dict ['default bands'] = [int(vnir_obj.wave_to_band(660)),
+                                  int(vnir_obj.wave_to_band(560)),
+                                  int(vnir_obj.wave_to_band(460))]
 
-    writer = WriteENVI(rad_file,rad_dict)
+    writer = WriteENVI(rdn_file,rdn_dict)
     iterator_v =vnir_obj.iterate(by = 'line')
     iterator_s =swir_obj.iterate(by = 'line')
 
@@ -189,7 +187,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
         chunk_s =np.flip(chunk_s,axis=1)
 
         if (iterator_v.current_line >=2) and (iterator_v.current_line <= 997):
-            if (measurement == 'rad') & shift_correct:
+            if (measurement == 'rdn') & shift_correct:
                 vnir_interpolator = interp1d(vnir_waves+shift_surf_smooth[iterator_v.current_line-2,:63],
                                                chunk_v[2:-2,:],fill_value = "extrapolate",kind='cubic')
                 chunk_v = vnir_interpolator(vnir_waves)
@@ -342,9 +340,9 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
         sensor_zn_prj = project.project_band(sensor_zn,-9999)
         elevation_prj = project.project_band(elevation.astype(np.float),-9999)
 
-        rad_file = '%sPRS_%s_rad_unprj' % (temp_dir,base_name)
+        rdn_file = '%sPRS_%s_rdn' % (temp_dir,base_name)
         radiance = ht.HyTools()
-        radiance.read_file(rad_file, 'envi')
+        radiance.read_file(rdn_file, 'envi')
 
         #Average over Landsat 8 Band 5 bandwidth and warp
         unwarp_band = np.zeros(longitude.shape)
@@ -389,6 +387,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
         logging.info('Rebuilding DEM')
         elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
 
+
     # Export location datacube
     loc_export(loc_file,longitude,latitude,elevation)
 
@@ -423,8 +422,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
         out_lines = int(blocksize* (project.output_shape[0]//blocksize))
 
         logging.info('Georeferencing datasets to %sm resolution' % res)
-        for file in ['rad','loc','obs']:
-            input_name = '%sPRS_%s_%s_unprj' % (temp_dir,base_name,file)
+        for file in ['rdn','loc','obs']:
+            input_name = '%sPRS_%s_%s' % (temp_dir,base_name,file)
             hy_obj = ht.HyTools()
             hy_obj.read_file(input_name, 'envi')
             iterator =hy_obj.iterate(by = 'band')
@@ -435,14 +434,14 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
             out_header['data ignore value'] = -9999
             out_header['map info'] = map_info
 
-            output_name = '%sPRS_%s_%s_geo' % (out_dir,base_name,file)
+            output_name = '%sPRS_%s_%s_prj' % (out_dir,base_name,file)
             writer = WriteENVI(output_name,out_header)
 
             while not iterator.complete:
                 band = project.project_band(iterator.read_next(),-9999)
                 band[band == -9999] = np.nan
                 band = np.nanmean(view_as_blocks(band[:out_lines,:out_cols], (blocksize,blocksize)),axis=(2,3))
-                if file == 'rad':
+                if file == 'rdn':
                     band[band<0] = 0
                 band[np.isnan(band)] = -9999
                 writer.write_band(band,iterator.current_band)
