@@ -8,7 +8,7 @@ prisma:
     l3:  '/home/chlus/data/prisma/l3/'
     shift: 'https://github.com/EnSpec/sister/raw/master/data/prisma/wavelength_shift/PRISMA_20200721104249_20200721104253_0001_wavelength_shift_surface'
     project: True
-    resolution: 120
+    resolution: 90
     match: False
 
 #DESIS
@@ -32,7 +32,7 @@ isofit:
         surface_Liquids: 'https://data.ecosis.org/dataset/f5dae7c6-8dfa-4b90-805a-ef28241499d2/resource/31b6ba51-c0c5-4c1e-862a-561ab1845bea/download/surface_liquids.csv'
         filtered_ocean: 'https://data.ecosis.org/dataset/38942519-e925-4cbc-bbbd-ce6dcf276f73/resource/7dfc8f13-d26b-4fa4-b537-1bce6e9ddb37/download/filtered_ocean.csv'
     surface_type: 'multicomponent'
-    windows: [[380.0, 1300.0], [1450, 1780.0], [1950.0, 2450.0]]
+    windows: [[400.0, 1300.0], [1450, 1780.0], [2000.0, 2450.0]]
     segment_size: 50
     emulator: '/home/chlus/algorithms/sRTMnet/sRTMnet_v100'
     radiance_factors: 'https://raw.githubusercontent.com/EnSpec/sister/master/data/prisma/radiance_factors/PRISMA_20200721104249_20200721104253_0001_radiance_factors.txt'
