@@ -36,6 +36,8 @@ isofit:
     segment_size: 50
     emulator: '/home/chlus/algorithms/sRTMnet/sRTMnet_v100'
     radiance_factors: 'https://raw.githubusercontent.com/EnSpec/sister/master/data/prisma/radiance_factors/PRISMA_20200721104249_20200721104253_0001_radiance_factors.txt'
+    presolve: 1
+    empirical_line: 0
 
 #HyTools
 hytools:
