@@ -135,7 +135,7 @@ class Sister:
         apply_oe += ['--log_file','%s/%s_logfile' % (rfl_tmp,self.base_name)]
         apply_oe += ['--emulator_base',self.isofit['emulator']]
 
-        if self.isofit['radiance_factors']:
+        if self.rdn_cfg['radiance_factors']:
             rad_factors = "%s/radiance_factors.txt" % rfl_tmp
             download_file(rad_factors,self.isofit['radiance_factors'])
             apply_oe += ['--rdn_factors_path',rad_factors]
@@ -169,9 +169,3 @@ class Sister:
                 writer.write_band(band,band_num)
 
         shutil.rmtree(rfl_tmp)
-
-
-
-
-
-
