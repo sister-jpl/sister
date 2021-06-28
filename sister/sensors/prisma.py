@@ -108,9 +108,9 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
         loc_file = '%sPRS_%s_loc' % (temp_dir,base_name)
         obs_file = '%sPRS_%s_obs' % (temp_dir,base_name)
     else:
+        rdn_file = '%sPRS_%s_rdn' % (out_dir,base_name)
         loc_file = '%sPRS_%s_loc' % (out_dir,base_name)
         obs_file = '%sPRS_%s_obs' % (out_dir,base_name)
-        rdn_file = '%sPRS_%s_rdn' % (out_dir,base_name)
 
     measurement = 'rdn'
     logging.info('Exporting radiance data')
