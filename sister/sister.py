@@ -76,12 +76,12 @@ class Sister:
                                proj = self.rdn_cfg['project'],
                                res = self.rdn_cfg['resolution'])
         elif self.sensor == 'desis':
-            #l1_zip = '%s%s.zip' % (self.raw_dir,self.base_name.replace('PRS','PRS_L1_STD_OFFL'))
-            desis.geotiff_to_envi(self.base_name,l1b_zip,self.rdn_dir,
-                                 self.tmp_dir,self.dsm_dir,
-                                 match = self.rdn_cfg['match'],
-                                 proj = self.rdn_cfg['project'],
-                                 res = self.rdn_cfg['resolution'])
+            l1b_zip = '%sDESIS-HSI-L1B-%s.zip' % (self.raw_dir,self.base_name.replace('PRS','PRS_L1_STD_OFFL'))
+            desis.geotiff_to_envi(l1b_zip,self.rdn_dir,
+                                self.tmp_dir,self.dsm_dir,
+                                match = self.rdn_cfg['match'],
+                                proj = self.rdn_cfg['project'],
+                                res = self.rdn_cfg['resolution'])
 
     def reflectance(self):
         '''Run ISOFIT reflectance inversion
