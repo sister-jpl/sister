@@ -59,10 +59,10 @@ class Sister:
         else:
             prefix = ''
 
-        #Assign file path names
-        self.rdn_file = self.rdn_dir + self.base_name + '/%s' % prefix + self.base_name + '_rdn' + suffix
-        self.loc_file = self.rdn_dir + self.base_name + '/%s' % prefix + self.base_name + '_loc' + suffix
-        self.obs_file = self.rdn_dir + self.base_name + '/%s' % prefix + self.base_name + '_obs' + suffix
+        # Assign file path names
+        self.rdn_file = self.rdn_dir + '/%s' % prefix + self.base_name + '/%s' % prefix + self.base_name + '_rdn' + suffix
+        self.loc_file = self.rdn_dir + '/%s' % prefix + self.base_name + '/%s' % prefix + self.base_name + '_loc' + suffix
+        self.obs_file = self.rdn_dir + '/%s' % prefix +  self.base_name + '/%s' % prefix + self.base_name + '_obs' + suffix
 
         self.rfl_file = self.rdn_file.replace('rdn','rfl')
         self.unc_file = self.rfl_file.replace('_rfl','_unc')
