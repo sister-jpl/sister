@@ -10,6 +10,8 @@ prisma:
     project: True
     resolution: 90
     match: False
+    radiance_factors: 'https://raw.githubusercontent.com/EnSpec/sister/master/data/prisma/radiance_factors/PRISMA_20200721104249_20200721104253_0001_radiance_factors.txt'
+
 
 #DESIS
 desis:
@@ -17,6 +19,10 @@ desis:
     rad: '/data2/sister/data/desis/rdn/'
     rfl: '/data2/sister/data/desis/rfl/'
     l3:  '/data2/sister/data/desis/l3/'
+    project: True
+    resolution: 90
+    match: False
+    radiance_factors: False
 
 #Copernicus DSM directory
 dsm_dir: '/data2/sister/data/cop_dsm/'
@@ -35,7 +41,6 @@ isofit:
     windows: [[400.0, 1300.0], [1450, 1780.0], [2000.0, 2450.0]]
     segment_size: 50
     emulator: '/home/chlus/algorithms/sRTMnet/sRTMnet_v100'
-    radiance_factors: 'https://raw.githubusercontent.com/EnSpec/sister/master/data/prisma/radiance_factors/PRISMA_20200721104249_20200721104253_0001_radiance_factors.txt'
     presolve: 1
     empirical_line: 0
 
