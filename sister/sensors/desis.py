@@ -48,8 +48,8 @@ def gaussian(x, mu, fwhm):
     sig = fwhm/(2* np.sqrt(2*np.log(2)))
     return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
-def geotiff_to_envi(base_name,l1b_zip,out_dir,temp_dir,elev_dir,
-                  match=None,proj = True, res = 30):
+def geotiff_to_envi(l1b_zip,out_dir,temp_dir,elev_dir,
+                    match=None,proj = True, res = 30):
 
     '''
      This function exports three files:
@@ -82,11 +82,10 @@ def geotiff_to_envi(base_name,l1b_zip,out_dir,temp_dir,elev_dir,
     This functions assumes that the L1B and L1C zipped radiance products are located in the
     same directory
     '''
-    l1c_zip = l1b_zip.replace('L1B','L1C')
-    if not os.path.isfile(l1c_zip):
-        logging.error('Zipped L1C radiance file not found. Exiting.')
-        return
 
+    base_name = os.path.basename(l1b_zip)[14:-4]
+
+    out_dir = '%s/DESIS_%s/'% (out_dir,base_name)
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
 
@@ -94,17 +93,15 @@ def geotiff_to_envi(base_name,l1b_zip,out_dir,temp_dir,elev_dir,
     if not os.path.isdir(temp_dir):
         os.mkdir(temp_dir)
 
-    for file in [l1b_zip,l1c_zip]:
-        zip_base  =os.path.basename(file)
-        logging.info('Unzipping %s' % zip_base)
-        with zipfile.ZipFile(file,'r') as zipped:
-            zipped.extractall(temp_dir)
+    zip_base  =os.path.basename(l1b_zip)
+    logging.info('Unzipping %s' % zip_base)
+    with zipfile.ZipFile(l1b_zip,'r') as zipped:
+        zipped.extractall(temp_dir)
 
-    l1b_file = gdal.Open('%s/DESIS-HSI-L1B-%s-V0210-SPECTRAL_IMAGE.tif' % (temp_dir,base_name))
-    l1c_file = gdal.Open('%s/DESIS-HSI-L1C-%s-V0210-SPECTRAL_IMAGE.tif' % (temp_dir,base_name))
+    l1b_file = gdal.Open('%s/DESIS-HSI-L1B-%s-SPECTRAL_IMAGE.tif' % (temp_dir,base_name))
 
     # Parse relevant metadata from XML file, assume metadata are in same directory as iamges
-    tree = ET.parse('%s/DESIS-HSI-L1B-%s-V0210-METADATA.xml' % (temp_dir,base_name))
+    tree = ET.parse('%s/DESIS-HSI-L1B-%s-METADATA.xml' % (temp_dir,base_name))
     root = tree.getroot()
     specific =  root[3]
     band_meta = {}
@@ -175,8 +172,6 @@ def geotiff_to_envi(base_name,l1b_zip,out_dir,temp_dir,elev_dir,
     orbit_data = np.array(orbit_data)
 
     l1b_band = l1b_file.ReadAsArray().mean(axis=0)
-    l1c_band = l1c_file.ReadAsArray().mean(axis=0)
-    rfl_mask = (l1c_band !=l1c_band[0][0]).astype(int)
 
     # Get bounding coordinates of scene
     coord_dict= {}
@@ -187,33 +182,6 @@ def geotiff_to_envi(base_name,l1b_zip,out_dir,temp_dir,elev_dir,
         lon= float(point.findall('longitude')[0].text)
         coord_dict[name] = [lat,lon]
 
-    # Get corner coordinates of projects L2 scene
-    top = np.argmax(np.cumsum(rfl_mask[0]))
-    bottom = np.argmax(np.cumsum(rfl_mask[-2]))
-    left = np.argmax(np.cumsum(rfl_mask[:,0]))
-    right = np.argmax(np.cumsum(rfl_mask[:,-1]))
-
-    ulx,pixel,a,uly,b,c =l1c_file.GetGeoTransform()
-
-    coords = np.array([[top,0],[l1c_file.RasterXSize,right],[bottom,l1c_file.RasterYSize],[0,left]]).T
-    coords[0] = ulx + coords[0]*pixel
-    coords[1] = uly - coords[1]*pixel
-
-    map_proj = pyproj.Proj(l1c_file.GetProjection())
-    lla = pyproj.Proj(proj='latlong', ellps='WGS84', datum='WGS84')
-    corner_lon,corner_lat = pyproj.transform(map_proj, lla,
-                                coords[0],
-                                coords[1],
-                                radians=False)
-
-    #Update coord_dict with closest matching corner coordinate
-    for point in coord_dict:
-        if 'point' in point:
-            lat,lon = coord_dict[point]
-            dist = np.sqrt((corner_lon-lon)**2 + (corner_lat-lat)**2)
-            closest = np.argmin(dist)
-            coord_dict[point]= [corner_lat[closest],corner_lon[closest]]
-
     # Get ISS altitude
     altitude_m = float(base.findall('altitudeCoverage')[0].text)
 
@@ -221,7 +189,7 @@ def geotiff_to_envi(base_name,l1b_zip,out_dir,temp_dir,elev_dir,
     mask = raster[1].astype(float)
     mask = mask==mask[0][0]
 
-    rad_dict  = envi_header_dict ()
+    rad_dict  = envi_header_dict()
     rad_dict ['lines']= l1b_file.RasterYSize
     rad_dict ['samples']= l1b_file.RasterXSize-85
     rad_dict ['bands']= len(waves)-1
@@ -232,19 +200,19 @@ def geotiff_to_envi(base_name,l1b_zip,out_dir,temp_dir,elev_dir,
     rad_dict ['wavelength units'] = "nanometers"
     rad_dict ['byte order'] = 0
     rad_dict ['data ignore value'] = -9999
-    rad_dict ['default bands'] = [vnir_obj.wave_to_band(660),
-                                  vnir_obj.wave_to_band(560),
-                                  vnir_obj.wave_to_band(460)]
+    rad_dict ['default bands'] = [np.argmin(np.abs(waves-660)),
+                                  np.argmin(np.abs(waves-560)),
+                                  np.argmin(np.abs(waves-460))]
 
     #Define output paths
     if proj:
-        rad_file = '%sDESIS_%s_rad_unprj' % (temp_dir,base_name)
-        loc_file = '%sDESIS_%s_loc_unprj' % (temp_dir,base_name)
-        obs_file = '%sDESIS_%s_obs_unprj' % (temp_dir,base_name)
+        rad_file = '%sDESIS_%s_rad' % (temp_dir,base_name)
+        loc_file = '%sDESIS_%s_loc' % (temp_dir,base_name)
+        obs_file = '%sDESIS_%s_obs' % (temp_dir,base_name)
     else:
-        loc_file = '%sDESIS_%s_loc_unprj' % (out_dir,base_name)
-        obs_file = '%sDESIS_%s_obs_unprj' % (out_dir,base_name)
-        rad_file = '%sDESIS_%s_rad_unprj' % (out_dir,base_name)
+        loc_file = '%sDESIS_%s_loc' % (out_dir,base_name)
+        obs_file = '%sDESIS_%s_obs' % (out_dir,base_name)
+        rad_file = '%sDESIS_%s_rad' % (out_dir,base_name)
 
     writer = WriteENVI(rad_file,rad_dict )
 
@@ -337,7 +305,6 @@ def geotiff_to_envi(base_name,l1b_zip,out_dir,temp_dir,elev_dir,
         sensor_zn_prj = project.project_band(sensor_zn,-9999)
         elevation_prj = project.project_band(elevation.astype(np.float),-9999)
 
-        rad_file = '%sDESIS_%s_rad_unprj' % (temp_dir,base_name)
         radiance = ht.HyTools()
         radiance.read_file(rad_file, 'envi')
 
@@ -383,7 +350,6 @@ def geotiff_to_envi(base_name,l1b_zip,out_dir,temp_dir,elev_dir,
         logging.info('Rebuilding DEM')
         elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
 
-
     loc_export(loc_file,longitude,latitude,elevation)
 
     # Generate remaining observable layers
@@ -422,7 +388,7 @@ def geotiff_to_envi(base_name,l1b_zip,out_dir,temp_dir,elev_dir,
         logging.info('Georeferencing datasets')
         for file in ['rad','loc','obs']:
             logging.info(file)
-            input_name = '%sDESIS_%s_%s_unprj' % (temp_dir,base_name,file)
+            input_name = '%sDESIS_%s_%s' % (temp_dir,base_name,file)
             hy_obj = ht.HyTools()
             hy_obj.read_file(input_name, 'envi')
             iterator =hy_obj.iterate(by = 'band')
