@@ -143,7 +143,7 @@ class Sister:
 
         if self.rdn_cfg['radiance_factors']:
             rad_factors = "%s/radiance_factors.txt" % rfl_tmp
-            download_file(rad_factors,self.isofit['radiance_factors'])
+            download_file(rad_factors,self.rdn_cfg['radiance_factors'])
             apply_oe += ['--rdn_factors_path',rad_factors]
 
         apply = subprocess.Popen(apply_oe)
