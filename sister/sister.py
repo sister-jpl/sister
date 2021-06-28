@@ -38,7 +38,7 @@ class Sister:
         if base_name.startswith('PRS'):
             self.sensor = 'prisma'
             self.date = base_name[4:12]
-        elif base_name.startswith('DESIS'):
+        elif base_name.startswith('DT'):
             self.sensor = 'desis'
             self.date = base_name[4:12]
 
