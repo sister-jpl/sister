@@ -16,7 +16,7 @@ prisma:
 #DESIS
 desis:
     raw: '/data2/sister/data/desis/raw/'
-    rad: '/data2/sister/data/desis/rdn/'
+    rdn: '/data2/sister/data/desis/rdn/'
     rfl: '/data2/sister/data/desis/rfl/'
     l3:  '/data2/sister/data/desis/l3/'
     project: True
