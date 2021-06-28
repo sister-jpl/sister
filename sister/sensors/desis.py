@@ -399,7 +399,7 @@ def geotiff_to_envi(l1b_zip,out_dir,temp_dir,elev_dir,
             out_header['data ignore value'] = -9999
             out_header['map info'] = map_info
 
-            output_name = '%sDESIS_%s_%s_geo' % (out_dir,base_name,file)
+            output_name = '%sDESIS_%s_%s_prj' % (out_dir,base_name,file)
             writer = WriteENVI(output_name,out_header)
 
             while not iterator.complete:
