@@ -40,7 +40,7 @@ class Sister:
             self.date = base_name[4:12]
         elif base_name.startswith('DT'):
             self.sensor = 'desis'
-            self.date = base_name[4:12]
+            self.date = base_name[17:25]
 
         self.rdn_cfg = configs[self.sensor]
         self.rdn_dir = configs[self.sensor]['rdn']
@@ -62,7 +62,7 @@ class Sister:
         # Assign file path names
         self.rdn_file = self.rdn_dir + '/%s' % prefix + self.base_name + '/%s' % prefix + self.base_name + '_rdn' + suffix
         self.loc_file = self.rdn_dir + '/%s' % prefix + self.base_name + '/%s' % prefix + self.base_name + '_loc' + suffix
-        self.obs_file = self.rdn_dir + '/%s' % prefix +  self.base_name + '/%s' % prefix + self.base_name + '_obs' + suffix
+        self.obs_file = self.rdn_dir + '/%s' % prefix + self.base_name + '/%s' % prefix + self.base_name + '_obs' + suffix
 
         self.rfl_file = self.rdn_file.replace('rdn','rfl')
         self.unc_file = self.rfl_file.replace('_rfl','_unc')
