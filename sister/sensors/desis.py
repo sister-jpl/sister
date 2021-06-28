@@ -206,13 +206,13 @@ def geotiff_to_envi(l1b_zip,out_dir,temp_dir,elev_dir,
 
     #Define output paths
     if proj:
-        rad_file = '%sDESIS_%s_rad' % (temp_dir,base_name)
+        rad_file = '%sDESIS_%s_rdn' % (temp_dir,base_name)
         loc_file = '%sDESIS_%s_loc' % (temp_dir,base_name)
         obs_file = '%sDESIS_%s_obs' % (temp_dir,base_name)
     else:
+        rad_file = '%sDESIS_%s_rdn' % (out_dir,base_name)
         loc_file = '%sDESIS_%s_loc' % (out_dir,base_name)
         obs_file = '%sDESIS_%s_obs' % (out_dir,base_name)
-        rad_file = '%sDESIS_%s_rad' % (out_dir,base_name)
 
     writer = WriteENVI(rad_file,rad_dict )
 
@@ -386,7 +386,7 @@ def geotiff_to_envi(l1b_zip,out_dir,temp_dir,elev_dir,
         out_lines = int(blocksize* (project.output_shape[0]//blocksize))
 
         logging.info('Georeferencing datasets')
-        for file in ['rad','loc','obs']:
+        for file in ['rdn','loc','obs']:
             logging.info(file)
             input_name = '%sDESIS_%s_%s' % (temp_dir,base_name,file)
             hy_obj = ht.HyTools()
