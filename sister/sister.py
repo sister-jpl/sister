@@ -150,8 +150,8 @@ class Sister:
         apply = subprocess.Popen(apply_oe)
         apply.wait()
 
-        if not os.path.isdir("%s/%s" % (self.rfl_dir,self.base_name)):
-            os.mkdir("%s/%s" % (self.rfl_dir,self.base_name))
+        if not os.path.isdir(os.path.dirname(self.rfl_file)):
+            os.mkdir(os.path.dirname(self.rfl_file))
 
         # Mask windows and rename ISOFIT output files
         rfl = glob.glob('%s/output/*_rfl_prj_rfl' % rfl_tmp)[0]
