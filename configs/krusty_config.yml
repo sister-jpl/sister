@@ -16,9 +16,9 @@ prisma:
 #DESIS
 desis:
     raw: '/data2/sister/data/desis/raw/'
-    rdn: '/data2/sister/data/desis/rdn/'
-    rfl: '/data2/sister/data/desis/rfl/'
-    l3:  '/data2/sister/data/desis/l3/'
+    rdn: '/home/chlus/data/desis/rdn/'
+    rfl: '/home/chlus/data/desis/rfl/'
+    l3:  '/home/chlus/data/desis/l3/'
     project: True
     resolution: 90
     match: False
