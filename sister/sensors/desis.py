@@ -289,7 +289,7 @@ def geotiff_to_envi(l1b_zip,out_dir,temp_dir,elev_dir,
                                              np.array([easting,northing,up]))
 
 
-    if match and proj:
+    if match:
         coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
                                 np.expand_dims(northing.flatten(),axis=1)],axis=1)
         warp_east = easting.min()-100
