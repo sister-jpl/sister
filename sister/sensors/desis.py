@@ -406,7 +406,8 @@ def geotiff_to_envi(l1b_zip,out_dir,temp_dir,elev_dir,
                 band = project.project_band(iterator.read_next(),-9999)
                 band[band == -9999] = np.nan
                 band = np.nanmean(view_as_blocks(band[:out_lines,:out_cols], (blocksize,blocksize)),axis=(2,3))
-                band[band<0] = 0
+                if file == 'rdn':
+                    band[band<0] = 0
                 band[np.isnan(band)] = -9999
                 writer.write_band(band,iterator.current_band)
     logging.info('Deleting temporary files')
