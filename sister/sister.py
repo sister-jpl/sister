@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import glob
 import os
 from multiprocessing import cpu_count
 import shutil
@@ -153,8 +154,8 @@ class Sister:
             os.mkdir("%s/%s" % (self.rfl_dir,self.base_name))
 
         # Mask windows and rename ISOFIT output files
-        rfl = '%s/output/%s_rfl_prj_rfl'% (rfl_tmp,self.base_name)
-        uncert = '%s/output/%s_uncert_prj_uncert'% (rfl_tmp,self.base_name)
+        rfl = glob.glob('%s/output/*_rfl_prj_rfl' % rfl_tmp)[0]
+        uncert = glob.glob('%s/output/*_uncert_prj_uncert'% rfl_tmp)[0]
 
         for new,old in [(self.rfl_file,rfl),(self.unc_file,uncert)]:
             hy_obj = ht.HyTools()
