@@ -24,7 +24,7 @@ from sister import Sister
 
 def main():
 
-    parser = argparse.ArgumentParser(description = "Convert PRISMA HDF to ENVI format")
+    parser = argparse.ArgumentParser(description = "SISTER Algorithm workflow")
     parser.add_argument('base_name',help="File base name", type = str)
     parser.add_argument('config_file',help="Configuration YAML file", type = str)
     parser.add_argument('-steps',help="Workflow steps", nargs='+', required=True)
