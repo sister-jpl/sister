@@ -25,8 +25,8 @@ desis:
     radiance_factors: False
 
 #Copernicus DSM directory
-dsm_dir: '/data2/sister/data/cop_dsm/'
-
+#dsm_dir: '/data2/sister/data/cop_dsm/'
+dsm_dir:'https://copernicus-dem-30m.s3.amazonaws.com/'
 tmp_dir: '/home/chlus/data/temp/'
 
 #ISOFIT

@@ -73,8 +73,8 @@ def geotiff_to_envi(l1b_zip,out_dir,temp_dir,elev_dir,
      l1(str): L1B zipped radiance data product path
      out_dir(str): Output directory of ENVI datasets
      temp_dir(str): Temporary directory for intermediate
-     elev_dir (str): Directory zipped Copernicus elevation tiles
-     shift (str) : Pathname of wavelength shift correction surface file
+     elev_dir (str): Directory zipped Copernicus elevation tiles or url to AWS Copernicus data
+                    ex : 'https://copernicus-dem-30m.s3.amazonaws.com/'
      match (str or list) : Pathname to Landsat image for image re-registration (recommended)
      proj (bool) : Project image to UTM grid
      res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)

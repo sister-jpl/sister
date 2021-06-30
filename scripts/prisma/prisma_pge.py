@@ -47,8 +47,9 @@ def main():
     l1(str): L1 zipped radiance data product path
     out_dir(str): Output directory of ENVI radiance datasets
     temp_dir(str): Temporary directory for intermediate files
-    elev_dir (str): Directory path to zipped Copernicus DSM tiles
-    shift (str) : Pathname of wavelength shift correction surface file
+    elev_dir (str): Directory zipped Copernicus elevation tiles or url to AWS Copernicus data
+                    ex : 'https://copernicus-dem-30m.s3.amazonaws.com/'
+    shift (str) : URL of wavelength shift correction surface file
     match (str or list) : Perform landsat image matching (recommended)
     proj (bool) : Project image to UTM grid
     res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)
