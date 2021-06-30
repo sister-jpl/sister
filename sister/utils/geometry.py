@@ -29,13 +29,17 @@ import statsmodels.api as sm
 import ray
 import pyproj
 from skimage.util import view_as_blocks
-import ee
 
 try:
     import gdal
 except:
     from osgeo import gdal
 
+#Temporary fix.....
+try:
+    import ee
+except:
+    print('Unable to import Google Earth Engine API')
 
 class Projector():
     """Projector class"""
@@ -325,7 +329,7 @@ def pairwise(iterable):
     next(b, None)
     return zip(a, b)
 
-def get_landsat_image(longitude,latitude,month,max_cloud = 5,band=5):
+def get_landsat_image(longitude,latitude,month,max_cloud = 5,band=5,project = True):
     '''Given a set of coordinates and a month this function uses
     Google Earth Engine to generate a landsat scene using scenes from
     +/- 1 month of the input month
@@ -347,7 +351,8 @@ def get_landsat_image(longitude,latitude,month,max_cloud = 5,band=5):
                                         (lon1,lat1)]))
 
     #Retrieve Landsat 8 collection and average
-    landsat8 = ee.ImageCollection("LANDSAT/LC08/C01/T1")
+    landsat8 = ee.ImageCollection("LANDSAT/LC08/C01/T1_TOA")
+
     landsat8_bounds = landsat8.filterBounds(bounds)
     landsat8_month = landsat8_bounds.filter(ee.Filter.calendarRange(month-1,month+1,'month'))
     landsat8_cloud = landsat8_month.filterMetadata('CLOUD_COVER','less_than',max_cloud).sort('CLOUDY_PIXEL_PERCENTAGE')
@@ -383,19 +388,30 @@ def get_landsat_image(longitude,latitude,month,max_cloud = 5,band=5):
     lons= np.array(lons)[:,np.newaxis]
     values= np.array(values)[:,np.newaxis]
 
-    easting,northing,up = dda2utm(lons,lats,[0 for x in lats],zn_dir =None)
 
-    coords =np.concatenate([easting,northing],axis=1)
+    if project:
+        project = Projector()
+        easting,northing,up = dda2utm(lons,lats,[0 for x in lats],zn_dir =None)
+        coords =np.concatenate([easting,northing],axis=1)
+        project.create_tree(coords,np.expand_dims(easting.flatten(),axis=1).shape)
 
-    project = Projector()
-    project.create_tree(coords,np.expand_dims(easting.flatten(),axis=1).shape)
+        ulx = easting.min()-100
+        uly = northing.max()+100
+        pixel_size = 30
 
-    ulx = easting.min()-100
-    uly = northing.max()+100
-    pixel_size = 30
+        project.query_tree(ulx,uly,pixel_size)
 
-    project.query_tree(ulx,uly,pixel_size)
+        values_prj = project.project_band(np.expand_dims(values.flatten(),axis=1),-9999)
+        return values_prj,ulx,uly
 
-    values_prj = project.project_band(np.expand_dims(values.flatten(),axis=1),-9999)
+    else:
 
-    return values_prj,ulx,uly
+        return values,lons,lats
+
+
+
+
+
+
+
+

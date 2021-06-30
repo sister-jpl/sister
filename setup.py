@@ -1,4 +1,6 @@
 from setuptools import setup, find_packages
+from setuptools.command.install import install
+import os
 
 setup(
     name='sister-sbg',
@@ -8,7 +10,7 @@ setup(
     url='https://github.com/EnSpec/sister',
     author = 'Adam Chlus',
     packages=find_packages(),
-    install_requires=['ee',
+    install_requires=['earthengine-api',
                       'gdal',
                       'h5py',
                       'hy-tools',
@@ -22,5 +24,5 @@ setup(
                       'scikit-image',
                       'scipy',
                       'statsmodels'],
-    python_requires='>=3.6, !=3.9.*'
+    python_requires='>=3.6, !=3.9.*',
     )
