@@ -30,7 +30,7 @@ from .sensors import prisma ,desis
 from .utils.isofit import gen_wavelength_file,surface_config_gen,get_surface_spectra
 from .utils.misc import download_file
 
-class Sister:
+class Manager:
     def __init__(self,base_name,configs):
 
         self.base_name = base_name

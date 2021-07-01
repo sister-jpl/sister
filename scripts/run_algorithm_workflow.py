@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import argparse
 import yaml
-from sister import Sister
+from sister.utils.manager import Manager
 
 def main():
 
@@ -33,7 +33,7 @@ def main():
     with open(args.config_file,'r') as file:
         configs = yaml.load(file)
 
-    manager = Sister(args.base_name,configs)
+    manager = Manager(args.base_name,configs)
 
     workflow =args.steps
 
