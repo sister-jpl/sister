@@ -27,8 +27,8 @@ import hytools as ht
 from isofit.utils import surface_model
 import numpy as np
 from ..sensors import prisma ,desis
-from .utils.isofit import gen_wavelength_file,surface_config_gen,get_surface_spectra
-from .utils.misc import download_file
+from .isofit import gen_wavelength_file,surface_config_gen,get_surface_spectra
+from .misc import download_file
 
 class Manager:
     def __init__(self,base_name,configs):
