@@ -26,7 +26,7 @@ import subprocess
 import hytools as ht
 from isofit.utils import surface_model
 import numpy as np
-from .sensors import prisma ,desis
+from ..sensors import prisma ,desis
 from .utils.isofit import gen_wavelength_file,surface_config_gen,get_surface_spectra
 from .utils.misc import download_file
 
