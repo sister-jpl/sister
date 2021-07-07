@@ -1,4 +1,5 @@
 #!/bin/bash
+# arg1: Ouput resolution in meters, should be a factor of 30 (ex. 30,60,90.....)
 
 imgspec_dir=$( cd "$(dirname "$0")" ; pwd -P )
 sister_dir=$(dirname ${imgspec_dir})
@@ -10,4 +11,4 @@ temp_dir='/data2/temp/'
 l1_zip=${sister_dir}/input/PRS*.zip
 
 # Run PRISMA PGE, export rdn, obs and loc ENVI files
-python ${sister_dir}/scripts/prisma/prisma_pge.py ${l1_zip} ${output_dir} ${temp_dir} ${aws_cop_url} -proj -res 30 -shift ${shift_surface}
+python ${sister_dir}/scripts/prisma/prisma_pge.py ${l1_zip} ${output_dir} ${temp_dir} ${aws_cop_url} -proj -res $1 -shift ${shift_surface}
