@@ -1,5 +1,5 @@
 #!/bin/bash
-# arg1: Ouput resolution in meters, should be a factor of 30 (ex. 30,60,90.....)
+# arg1: Output resolution in meters, should be a factor of 30 (ex. 30,60,90.....)
 
 imgspec_dir=$( cd "$(dirname "$0")" ; pwd -P )
 sister_dir=$(dirname ${imgspec_dir})
