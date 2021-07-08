@@ -16,6 +16,10 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+https://copernicus-dem-30m.s3.amazonaws.com/
+
 """
 
 import os
@@ -25,8 +29,11 @@ import logging
 import numpy as np
 import hytools as ht
 from hytools.io.envi import WriteENVI,envi_header_dict
+import pandas as pd
 from rtree import index
 from scipy.spatial import cKDTree
+from .misc import download_file
+
 
 def dem_generate(longitude,latitude,elev_dir,temp_dir):
     '''
@@ -46,11 +53,16 @@ def dem_generate(longitude,latitude,elev_dir,temp_dir):
     lat_min = latitude.min()
     lat_max = latitude.max()
 
-    # Create a simple spatial index to find intersecting tiles
+    if 'aws' in elev_dir:
+        tiles = pd.read_csv(elev_dir + 'tileList.txt',header = None).values.flatten()
+    else:
+        tiles = glob.glob(elev_dir + '*.tar.gz')
+
     idx = index.Index(properties=index.Property())
-    tiles = glob.glob(elev_dir + '*.tar.gz')
+
+    #Get list of intersecting tiles
     for i, tile in enumerate(tiles):
-        lat,ign,lon = os.path.basename(tile).split('_')[3:6]
+        lat,ign,lon = os.path.basename(tile).replace('_COG','').split('_')[3:6]
         if 'W' in lon:
             lon = -1*float(lon[1:])
         else:
@@ -60,56 +72,61 @@ def dem_generate(longitude,latitude,elev_dir,temp_dir):
         else:
             lat = float(lat[1:])
         idx.insert(i,(lon,lat,lon+1,lat+1))
+    tiles_intersect = [tiles[n] for n in idx.intersection((lon_min, lat_min, lon_max, lat_max))]
 
-    tiles_inter = [tiles[n] for n in idx.intersection((lon_min, lat_min, lon_max, lat_max))]
-
-    if len(tiles_inter) > 0:
-        tile_string = "Found %s intersecting elevation tiles:" % len(tiles_inter)
-        for tile in tiles_inter:
-            tile_string+= '\n\t%s' % tile
-            with tarfile.open(tile, 'r') as tar_ref:
-                tar_ref.extractall(temp_dir)
-        logging.info(tile_string)
-        logging.info('Merging DEM tiles')
-        dem_file  = '%stemp_dem' % temp_dir
-        os.system('gdal_merge.py -o %s -of ENVI %s*.dt2' % (dem_file,temp_dir))
-
-        dem_obj = ht.HyTools()
-        dem_obj.read_file(dem_file, 'envi')
-
-        ulx = float(dem_obj.map_info[3])
-        uly = float(dem_obj.map_info[4])
-        pix = float(dem_obj.map_info[5])
-
-        dem_lat,dem_lon = np.indices((dem_obj.lines,dem_obj.columns))
-
-        dem_xl = int((lon_min-ulx)//pix)
-        dem_xr = int((lon_max-ulx)//pix)
-        dem_yu = int((uly-lat_max)//pix)
-        dem_yd = int((uly-lat_min)//pix)
-
-        dem_subset = dem_obj.get_chunk(dem_xl,dem_xr,dem_yu,dem_yd)
-        dem_lat,dem_lon = np.indices(dem_subset.shape[:2])
-        dem_lat = (lat_max- dem_lat*pix).flatten()
-        dem_lon = (lon_min+ dem_lon*pix).flatten()
-
-        #Create spatial index and nearest neighbor sample
-        src_points =np.concatenate([np.expand_dims(dem_lon,axis=1),
-                                    np.expand_dims(dem_lat,axis=1)],axis=1)
-        tree = cKDTree(src_points,balanced_tree= False)
-
-        dst_points = np.concatenate([longitude.flatten()[:,np.newaxis],
-                                     latitude.flatten()[:,np.newaxis]],
-                                     axis=1)
-
-        indexes = tree.query(dst_points,k=1)[1]
-        indices_int = np.unravel_index(indexes,(dem_subset.shape[0],
-                                                dem_subset.shape[1]))
-        elevation = dem_subset[indices_int[0],indices_int[1]].reshape(longitude.shape)
-
-    else:
+    if len(tiles_intersect) == 0:
         constant_elev = float(input("No overlapping tiles found, enter constant elevation for scene (m): "))
         elevation = np.ones(longitude.shape.shape) * constant_elev
+    else:
+        tile_string = "Found %s intersecting elevation tiles:" % len(tiles_intersect)
+        for tile in tiles_intersect:
+            tile_string+= '\n\t%s' % tile
+
+            if 'aws' in elev_dir:
+                tile_url = "%s%s/%s.tif" % (elev_dir,tile,tile)
+                tile_file = "%s%s.tif" % (temp_dir,tile)
+                download_file(tile_file,tile_url)
+            else:
+                with tarfile.open(tile, 'r') as tar_ref:
+                    tar_ref.extractall(temp_dir)
+        logging.info(tile_string)
+
+    logging.info('Merging DEM tiles')
+    dem_file  = '%stemp_dem' % temp_dir
+    os.system('gdal_merge.py -o %s -of ENVI %sCopernicus_DSM*' % (dem_file,temp_dir))
+
+    dem_obj = ht.HyTools()
+    dem_obj.read_file(dem_file, 'envi')
+
+    ulx = float(dem_obj.map_info[3])
+    uly = float(dem_obj.map_info[4])
+    pix = float(dem_obj.map_info[5])
+
+    dem_lat,dem_lon = np.indices((dem_obj.lines,dem_obj.columns))
+
+    dem_xl = int((lon_min-ulx)//pix)
+    dem_xr = int((lon_max-ulx)//pix)
+    dem_yu = int((uly-lat_max)//pix)
+    dem_yd = int((uly-lat_min)//pix)
+
+    dem_subset = dem_obj.get_chunk(dem_xl,dem_xr,dem_yu,dem_yd)
+    dem_lat,dem_lon = np.indices(dem_subset.shape[:2])
+    dem_lat = (lat_max- dem_lat*pix).flatten()
+    dem_lon = (lon_min+ dem_lon*pix).flatten()
+
+    #Create spatial index and nearest neighbor sample
+    src_points =np.concatenate([np.expand_dims(dem_lon,axis=1),
+                                np.expand_dims(dem_lat,axis=1)],axis=1)
+    tree = cKDTree(src_points,balanced_tree= False)
+
+    dst_points = np.concatenate([longitude.flatten()[:,np.newaxis],
+                                 latitude.flatten()[:,np.newaxis]],
+                                 axis=1)
+
+    indexes = tree.query(dst_points,k=1)[1]
+    indices_int = np.unravel_index(indexes,(dem_subset.shape[0],
+                                            dem_subset.shape[1]))
+    elevation = dem_subset[indices_int[0],indices_int[1]].reshape(longitude.shape)
 
     #Set negative elevations to 0
     if np.sum(elevation<0) > 0:

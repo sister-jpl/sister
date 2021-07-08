@@ -10,14 +10,36 @@ sensors for input into higher level algorithms including atmospheric, topographi
 and BRDF correction algorithms.
 
 ### Installation
-To install, clone
+We recommend installing the libary and its dependencies in a conda environment.
+
+To create and activate a new environment run:
+```bash
+conda create -n sister python=3.7
+
+source activate sister
+```
+
+Next install gdal:
+```bash
+conda install -c conda-forge gdal
+```
+
+To install the library, clone:
 ```bash
 git clone https://github.com/EnSpec/sister.git
 ```
-
-and install with setuptools
+and run setuptools:
 ```bash
 python setup.py install
+```
+
+If you run into dependency errors with 'ray' try uninstalling:
+```bash
+pip uninstall ray
+```
+and reinstalling with the following command:
+```bash
+pip install 'ray[default]'
 ```
 
 ### Examples
@@ -37,18 +59,19 @@ three ENVI formated files:
 import os
 from sister.sensors import prisma
 
-base_dir = '/'
-
 base_name = '20200621003500_20200621003505_0001'
 l1_zip  = '/data/prisma/PRS_L1_STD_OFFL_%s.zip'% base_name
-out_dir = '%s/data/prisma/rad/PRISMA_%s/' % (base_dir,base_name)
-temp_dir =  '%s/temp/' % base_dir
+out_dir = '/data/prisma/rad/'
+temp_dir =  '/data/temp/'
 
 # Copernicus DEM directory
 elev_dir = '/data/sister/data/cop_dsm/'
 
+# or AWS S3 bucket
+elev_dir =https://copernicus-dem-30m.s3.amazonaws.com/
+
 #Wavelength shift surface
-shift = '%s/sister/data/prisma/wavelength_shift/PRISMA_20200721104249_20200721104253_0001_wavelength_shift_surface' % base_dir
+shift = 'https://github.com/EnSpec/sister/raw/master/data/prisma/wavelength_shift/PRISMA_20200721104249_20200721104253_0001_wavelength_shift_surface'
 
 #Perform Landsat image matching (recommended)
 match = True

@@ -4,7 +4,20 @@
 SISTER
 Space-based Imaging Spectroscopy and Thermal PathfindER
 Author: Adam Chlus
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3 of the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 import argparse
 from sister.sensors import prisma
 
@@ -34,8 +47,9 @@ def main():
     l1(str): L1 zipped radiance data product path
     out_dir(str): Output directory of ENVI radiance datasets
     temp_dir(str): Temporary directory for intermediate files
-    elev_dir (str): Directory path to zipped Copernicus DSM tiles
-    shift (str) : Pathname of wavelength shift correction surface file
+    elev_dir (str): Directory zipped Copernicus elevation tiles or url to AWS Copernicus data
+                    ex : 'https://copernicus-dem-30m.s3.amazonaws.com/'
+    shift (str) : URL of wavelength shift correction surface file
     match (str or list) : Perform landsat image matching (recommended)
     proj (bool) : Project image to UTM grid
     res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)

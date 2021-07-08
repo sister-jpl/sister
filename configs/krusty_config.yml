@@ -1,0 +1,49 @@
+---
+
+#PRISMA
+prisma:
+    raw: '/data2/sister/data/prisma/raw/'
+    rdn: '/home/chlus/data/prisma/rdn/'
+    rfl: '/home/chlus/data/prisma/rfl/'
+    l3:  '/home/chlus/data/prisma/l3/'
+    shift: 'https://github.com/EnSpec/sister/raw/master/data/prisma/wavelength_shift/PRISMA_20200721104249_20200721104253_0001_wavelength_shift_surface'
+    project: True
+    resolution: 90
+    match: False
+    radiance_factors: 'https://raw.githubusercontent.com/EnSpec/sister/master/data/prisma/radiance_factors/PRISMA_20200721104249_20200721104253_0001_radiance_factors.txt'
+
+
+#DESIS
+desis:
+    raw: '/data2/sister/data/desis/raw/'
+    rdn: '/home/chlus/data/desis/rdn/'
+    rfl: '/home/chlus/data/desis/rfl/'
+    l3:  '/home/chlus/data/desis/l3/'
+    project: True
+    resolution: 90
+    match: False
+    radiance_factors: False
+
+#Copernicus DSM directory
+#dsm_dir: '/data2/sister/data/cop_dsm/'
+dsm_dir: 'https://copernicus-dem-30m.s3.amazonaws.com/'
+tmp_dir: '/home/chlus/data/temp/'
+
+#ISOFIT
+isofit:
+    base: '/home/chlus/algorithms/isofit/'
+    surface:
+        filtered_other: 'https://data.ecosis.org/dataset/dea65562-994e-47d8-be37-2a8a3aaffdc9/resource/eb2b6493-7bde-42c7-9fa4-75ba036c671f/download/filtered_other.csv'
+        filtered_veg: 'https://data.ecosis.org/dataset/d8a73442-a6f0-40f5-942b-1276d1725178/resource/adbf7136-de77-404e-a6df-995ac856f4c1/download/filtered_veg.csv'
+        surface_Liquids: 'https://data.ecosis.org/dataset/f5dae7c6-8dfa-4b90-805a-ef28241499d2/resource/31b6ba51-c0c5-4c1e-862a-561ab1845bea/download/surface_liquids.csv'
+        filtered_ocean: 'https://data.ecosis.org/dataset/38942519-e925-4cbc-bbbd-ce6dcf276f73/resource/7dfc8f13-d26b-4fa4-b537-1bce6e9ddb37/download/filtered_ocean.csv'
+    surface_type: 'multicomponent'
+    windows: [[400.0, 1300.0], [1450, 1780.0], [2000.0, 2450.0]]
+    segment_size: 50
+    emulator: '/home/chlus/algorithms/sRTMnet/sRTMnet_v100'
+    presolve: 1
+    empirical_line: 0
+
+#HyTools
+hytools:
+    base: ''
