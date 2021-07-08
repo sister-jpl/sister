@@ -18,7 +18,7 @@ python ${sister_dir}/scripts/prisma/prisma_pge.py $l1_zip $output_dir $temp_dir 
 
 # gzip output files in preparation for downstream processing
 cd $output_dir
-l1_output_dir=PRS*
+l1_output_dir=$(ls -d PRS*)
 tar -cf ${l1_output_dir}.tar ${l1_output_dir}
 rm -rf $l1_output_dir
 gzip ${l1_output_dir}.tar
