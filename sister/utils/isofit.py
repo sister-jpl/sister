@@ -223,7 +223,7 @@ def surface_config_gen(surface_data_path,surface_type,windows,wavelength_file,su
                                                     ]
 
     elif surface_type == 'decorr':
-
+        surface_config["sources"] = [[] for x in range(4)]
         surface_config["sources"][0] = {}
         surface_config["sources"][0]["input_spectrum_files"] = ["%s/filtered_other" % surface_data_path]
         surface_config["sources"][0]["n_components"] = 1
