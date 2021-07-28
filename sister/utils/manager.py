@@ -34,7 +34,7 @@ class Manager:
     def __init__(self,base_name,configs):
 
         self.base_name = base_name
-        self.project = True
+
 
         if base_name.startswith('PRS'):
             self.sensor = 'prisma'
@@ -49,6 +49,7 @@ class Manager:
         self.raw_dir = configs[self.sensor]['raw']
         self.tmp_dir = configs['tmp_dir']
         self.dsm_dir = configs['dsm_dir']
+        self.project = configs[self.sensor]['project']
 
         if self.project:
             suffix = '_prj'
