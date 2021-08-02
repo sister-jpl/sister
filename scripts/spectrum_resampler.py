@@ -63,6 +63,10 @@ def main():
     out_header = hy_obj.get_header()
     out_header['bands'] = len(new_waves)
     out_header['wavelength'] = new_waves.tolist()
+    out_header['fwhm'] = [10 for x in new_waves]
+    out_header['default bands'] = []
+
+
     writer = WriteENVI(out_image,out_header)
     iterator =hy_obj.iterate(by = 'line')
 
