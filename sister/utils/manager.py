@@ -138,7 +138,6 @@ class Manager:
         apply_oe += ['--n_cores',str(cpu_count())]
         apply_oe += ['--empirical_line',str(self.isofit['empirical_line'])]
         apply_oe += ['--presolve',str(self.isofit['presolve'])]
-        apply_oe += ['--segment_size', str(self.isofit['segment_size'])]
         apply_oe += ['--ray_temp_dir',rfl_tmp]
         apply_oe += ['--log_file','%s/%s_logfile' % (rfl_tmp,self.base_name)]
         apply_oe += ['--emulator_base',self.isofit['emulator']]
