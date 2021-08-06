@@ -51,7 +51,7 @@ def main():
     else:
         new_waves = np.arange(400,2451,10)
 
-    bin_dict= {"DESIS": 3,
+    bin_dict= {"DESIS": 4,
                "PRISM": 3,
                "PRISMA": 1,
                "AVNG": 2,
@@ -65,7 +65,6 @@ def main():
     out_header['wavelength'] = new_waves.tolist()
     out_header['fwhm'] = [10 for x in new_waves]
     out_header['default bands'] = []
-
 
     writer = WriteENVI(out_image,out_header)
     iterator =hy_obj.iterate(by = 'line')
