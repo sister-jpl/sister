@@ -325,7 +325,8 @@ def geotiff_to_envi(l1b_zip,out_dir,temp_dir,elev_dir,
         #Calculate optimal shift
         y_model,x_model = image_match(landsat,warp_band,
                                       offset_x,offset_y,
-                                      sensor_zn_prj,sensor_az_prj,elevation_prj)
+                                      sensor_zn_prj,sensor_az_prj,elevation_prj,
+                                      shift_max=30)
 
         #Apply uniform filter
         smooth_elevation = uniform_filter(elevation,25)

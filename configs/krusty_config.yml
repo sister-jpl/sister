@@ -3,25 +3,25 @@
 #PRISMA
 prisma:
     raw: '/data2/sister/data/prisma/raw/'
-    rdn: '/home/chlus/data/prisma/rdn/'
-    rfl: '/home/chlus/data/prisma/rfl/'
-    l3:  '/home/chlus/data/prisma/l3/'
+    rdn: '/data2/sister/data/prisma/rdn/'
+    rfl: '/data2/sister/data/prisma/rfl/'
+    l3:  '/data2/sister/data/prisma/l3/'
     shift: 'https://github.com/EnSpec/sister/raw/master/data/prisma/wavelength_shift/PRISMA_20200721104249_20200721104253_0001_wavelength_shift_surface'
     project: True
-    resolution: 90
-    match: False
+    resolution: 30
+    match: True
     radiance_factors: 'https://raw.githubusercontent.com/EnSpec/sister/master/data/prisma/radiance_factors/PRISMA_20200721104249_20200721104253_0001_radiance_factors.txt'
 
 
 #DESIS
 desis:
     raw: '/data2/sister/data/desis/raw/'
-    rdn: '/home/chlus/data/desis/rdn/'
-    rfl: '/home/chlus/data/desis/rfl/'
-    l3:  '/home/chlus/data/desis/l3/'
+    rdn: '/data2/sister/data/desis/rdn/'
+    rfl: '/data2/sister/data/desis/rfl/'
+    l3:  '/data2/sister/data/desis/l3/'
     project: True
-    resolution: 90
-    match: False
+    resolution: 30
+    match: True
     radiance_factors: False
 
 #Copernicus DSM directory

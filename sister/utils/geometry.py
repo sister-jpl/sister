@@ -351,8 +351,7 @@ def get_landsat_image(longitude,latitude,month,max_cloud = 5,band=5,project = Tr
                                         (lon1,lat1)]))
 
     #Retrieve Landsat 8 collection and average
-    landsat8 = ee.ImageCollection("LANDSAT/LC08/C01/T1_TOA")
-
+    landsat8 = ee.ImageCollection("LANDSAT/LC08/C01/T1")
     landsat8_bounds = landsat8.filterBounds(bounds)
     landsat8_month = landsat8_bounds.filter(ee.Filter.calendarRange(month-1,month+1,'month'))
     landsat8_cloud = landsat8_month.filterMetadata('CLOUD_COVER','less_than',max_cloud).sort('CLOUDY_PIXEL_PERCENTAGE')
