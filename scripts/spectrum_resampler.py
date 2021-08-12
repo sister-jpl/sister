@@ -33,32 +33,24 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('infile', type=str)
     parser.add_argument('outdir', type=str)
-    parser.add_argument('sensor', type=str)
     parser.add_argument('--verbose', action='store_true')
 
     args = parser.parse_args()
-
-    if args.sensor not in ['DESIS','PRISM','PRISMA','AVNG','AVCL']:
-        print('Unrecognized sensor, exiting.')
-        return
 
     out_image = args.outdir + '/' + os.path.basename(args.infile) + "_10nm"
     hy_obj = htl.HyTools()
     hy_obj.read_file(args.infile,'envi')
 
-    if args.sensor in ['DESIS','PRISM']:
+    if hy_obj.wavelengths.max()< 1100:
         new_waves = np.arange(400,991,10)
     else:
         new_waves = np.arange(400,2451,10)
 
-    bin_dict= {"DESIS": 4,
-               "PRISM": 3,
-               "PRISMA": 1,
-               "AVNG": 2,
-               "AVCL": 1}
-
-    agg_waves  = np.nanmean(view_as_blocks(hy_obj.wavelengths[:(hy_obj.bands//bin_dict[args.sensor]) * bin_dict[args.sensor]],
-                                           (bin_dict[args.sensor],)),axis=1)
+    bins = int(np.round(10/np.diff(hy_obj.wavelengths).mean()))
+    agg_waves  = np.nanmean(view_as_blocks(hy_obj.wavelengths[:(hy_obj.bands//bins) * bins],
+                                           (bins,)),axis=1)
+    if args.verbose:
+        print("Aggregating every: %s" % bins)
 
     out_header = hy_obj.get_header()
     out_header['bands'] = len(new_waves)
@@ -72,8 +64,8 @@ def main():
     while not iterator.complete:
         if (iterator.current_line%100 == 0) and args.verbose:
             print(iterator.current_line)
-        line = iterator.read_next()[:,:(hy_obj.bands//bin_dict[args.sensor]) * bin_dict[args.sensor]]
-        line  = np.nanmean(view_as_blocks(line,(1,bin_dict[args.sensor],)),axis=(2,3))
+        line = iterator.read_next()[:,:(hy_obj.bands//bins) * bins]
+        line  = np.nanmean(view_as_blocks(line,(1,bins,)),axis=(2,3))
         interpolator = interp1d(agg_waves,line,fill_value = 'extrapolate', kind = 'cubic')
         line = interpolator(new_waves)
         writer.write_line(line,iterator.current_line)
