@@ -30,13 +30,17 @@ from PIL import Image
 import PIL
 import matplotlib.pyplot as plt
 
+home = os.path.expanduser('~')
 zip_dir = '/data2/prisma/raw/'
 out_dir = '%s/Dropbox/rs/sister/figures/prisma_quicklooks/' % home
 temp_dir = '/data2/temp/'
 
-for l1_zip in glob.glob('%s*.zip' % zip_dir):
+for l1_zip in glob.glob('%s*L1*.zip' % zip_dir):
 
     base_name = os.path.basename(l1_zip).replace('.zip','')
+    image_file ="%s/%s.jpeg" % (out_dir,base_name)
+    if os.path.isfile(image_file):
+        continue
 
     with zipfile.ZipFile(l1_zip,'r') as zipped:
         zipped.extractall(temp_dir)
@@ -65,7 +69,7 @@ for l1_zip in glob.glob('%s*.zip' % zip_dir):
     plt.close()
 
     im = Image.fromarray(rgb)
-    im.save("%s/%s.jpeg" % (out_dir,base_name))
+    im.save(image_file)
 
     os.remove(l1)
 
