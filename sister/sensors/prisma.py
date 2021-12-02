@@ -131,7 +131,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
     rdn_dict['data type'] = 12
     rdn_dict['wavelength units'] = "nanometers"
     rdn_dict['byte order'] = 0
-    vnir_temp = '%sPRS_-%s_%s_vnir' % (temp_dir,base_name,measurement)
+    vnir_temp = '%sPRS_%s_%s_vnir' % (temp_dir,base_name,measurement)
 
     writer = WriteENVI(vnir_temp,rdn_dict )
     writer.write_chunk(np.moveaxis(vnir_data[:,:,:],1,2), 0,0)
@@ -341,7 +341,6 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
         sensor_zn_prj = project.project_band(sensor_zn,-9999)
         elevation_prj = project.project_band(elevation.astype(np.float),-9999)
 
-        rdn_file = '%sPRS_%s_rdn' % (temp_dir,base_name)
         radiance = ht.HyTools()
         radiance.read_file(rdn_file, 'envi')
 
