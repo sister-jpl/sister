@@ -311,15 +311,19 @@ def sensor_view_angles(sat_enu,grd_enu):
     '''Calculates sensor zenith and azimuth angle
     in degrees
     '''
+    grd_enu = np.rot90(grd_enu,k=3,axes=(1,2))
 
     p = (sat_enu[:,:,np.newaxis]-grd_enu)/pathlength(sat_enu,grd_enu)
     sensor_zn = 90-np.degrees(np.arcsin(p[2]))
     sensor_az = np.degrees(np.arctan(p[0]/p[1]))
+    sensor_az[sensor_az<0]+=360
 
     DX,DY,DZ= grd_enu - sat_enu[:,:,np.newaxis]
     sensor_az[(DX>0) & (DY>0)]= 180+sensor_az[(DX>0) & (DY>0)]
-    sensor_az[(DX>0) & (DY<=0)]= 360+sensor_az[(DX>0) & (DY<=0)]
-    sensor_az[(DX<0) & (DY>=0)]= 180+sensor_az[(DX<0) & (DY>=0)]
+    sensor_az[(DX<0) & (DY>=0)] = sensor_az[(DX<0) & (DY>=0)] - 180
+
+    sensor_zn =  np.rot90(sensor_zn)
+    sensor_az =  np.rot90(sensor_az)
 
     return sensor_zn,sensor_az
 
