@@ -25,8 +25,6 @@ import numpy as np
 
 home = os.path.expanduser("~")
 
-name,url = 'filtered_other','https://data.ecosis.org/dataset/dea65562-994e-47d8-be37-2a8a3aaffdc9/resource/eb2b6493-7bde-42c7-9fa4-75ba036c671f/download/filtered_other.csv'
-
 surface_params = {'moderate:':   [{ "interval":[300,420],
                               "regularizer":10,
                               "correlation":"decorrelated"
