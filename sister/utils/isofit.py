@@ -113,7 +113,7 @@ def surface_config_gen(surface_data_path,windows,wavelength_file,surface_file,ou
     surface_config["sources"] = []
 
     for s,surface in enumerate(surfaces):
-
+        surface_config["sources"].append([])
         surface_config["sources"][s] = {}
         surface_config["sources"][s]["input_spectrum_files"] = ["%s/%s" % (surface_data_path,surface)]
         surface_config["sources"][s]["n_components"] = 1
