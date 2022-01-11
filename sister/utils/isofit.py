@@ -17,11 +17,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import glob
 import json
 import os
-import shutil
-import subprocess
 import hytools as ht
 import pandas as pd
 import numpy as np
@@ -30,7 +27,7 @@ home = os.path.expanduser("~")
 
 name,url = 'filtered_other','https://data.ecosis.org/dataset/dea65562-994e-47d8-be37-2a8a3aaffdc9/resource/eb2b6493-7bde-42c7-9fa4-75ba036c671f/download/filtered_other.csv'
 
-windows = {'moderate:':   [{ "interval":[300,420],
+surface_params = {'moderate:':   [{ "interval":[300,420],
                               "regularizer":10,
                               "correlation":"decorrelated"
                             },
@@ -70,7 +67,6 @@ windows = {'moderate:':   [{ "interval":[300,420],
                             "correlation":"EM"
                           }]}
 
-surfaces= ['filtered_other','filtered_veg','filtered_ocean','surface_Liquids']
 
 def get_surface_spectra(output_file,url):
     '''Download surface spectra from ECOSIS and save
@@ -109,6 +105,8 @@ def gen_wavelength_file(rad_file,out_dir):
 
 def surface_config_gen(surface_data_path,windows,wavelength_file,surface_file,out_config,prior = 'weak'):
 
+    surfaces= ['filtered_other','filtered_veg','filtered_ocean','surface_Liquids']
+
     surface_config = {}
     surface_config["output_model_file"]= surface_file
     surface_config["wavelength_file"]= wavelength_file
@@ -121,7 +119,7 @@ def surface_config_gen(surface_data_path,windows,wavelength_file,surface_file,ou
         surface_config["sources"][s] = {}
         surface_config["sources"][s]["input_spectrum_files"] = ["%s/%s" % (surface_data_path,surface)]
         surface_config["sources"][s]["n_components"] = 1
-        surface_config["sources"][s]["windows"] = windows[prior]
+        surface_config["sources"][s]["windows"] = surface_params[prior]
 
     with open(out_config, 'w') as outfile:
         json.dump(surface_config,outfile,indent=3)
