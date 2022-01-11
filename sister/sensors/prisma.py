@@ -73,7 +73,6 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
 
     base_name = os.path.basename(l1_zip)[16:-4]
 
-    out_dir = '%s/PRS_%s/'% (out_dir,base_name)
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
 
@@ -448,3 +447,4 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
 
     logging.info('Deleting temporary files')
     shutil.rmtree(temp_dir)
+
