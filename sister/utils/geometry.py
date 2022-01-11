@@ -411,10 +411,3 @@ def get_landsat_image(longitude,latitude,month,max_cloud = 5,band=5,project = Tr
 
         return values,lons,lats
 
-
-
-
-
-
-
-
