@@ -22,3 +22,4 @@ from .terrain import *
 from .geometry import *
 from .ancillary import *
 from .misc import *
+from .isofit import *
