@@ -44,7 +44,7 @@ def main():
                        'wavelength_fit.txt',
                        surface_file,
                        surface_config,
-                       configs[prior])
+                       configs['prior'])
 
     surface_model(surface_config)
 
