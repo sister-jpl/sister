@@ -40,11 +40,11 @@ def main():
     wavelength_file = gen_wavelength_file(args.rdn_file,
                                            args.temp_dir)
 
-    surface_config_gen(args.temp_dir,
-                       configs['windows'],
-                       wavelength_file,
+    surface_config_gen(configs['windows'],
+                       'wavelength_fit.txt',
                        surface_file,
-                       surface_config)
+                       surface_config,
+                       configs[prior])
 
     surface_model(surface_config)
 
