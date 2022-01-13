@@ -101,7 +101,7 @@ def gen_wavelength_file(rad_file,out_dir):
     return wavelength_file
 
 
-def surface_config_gen(surface_data_path,windows,wavelength_file,surface_file,out_config,prior = 'weak'):
+def surface_config_gen(windows,wavelength_file,surface_file,out_config,prior = 'weak'):
 
     surfaces= ['filtered_other','filtered_veg','filtered_ocean','surface_Liquids']
 
@@ -115,7 +115,7 @@ def surface_config_gen(surface_data_path,windows,wavelength_file,surface_file,ou
     for s,surface in enumerate(surfaces):
         surface_config["sources"].append([])
         surface_config["sources"][s] = {}
-        surface_config["sources"][s]["input_spectrum_files"] = ["%s/%s" % (surface_data_path,surface)]
+        surface_config["sources"][s]["input_spectrum_files"] = [surface]
         surface_config["sources"][s]["n_components"] = 1
         surface_config["sources"][s]["windows"] = surface_params[prior]
 
