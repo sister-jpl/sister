@@ -36,13 +36,11 @@ def main():
 
 
     surface_config = "%s/surface_config.json" % args.temp_dir
-    surface_file = '%s/surface_filtered.mat'% args.temp_dir
+    surface_file = '%s/surface.mat'% args.temp_dir
     wavelength_file = gen_wavelength_file(args.rdn_file,
                                            args.temp_dir)
 
     surface_config_gen(configs['windows'],
-                       'wavelength_fit.txt',
-                       surface_file,
                        surface_config,
                        configs['prior'])
 

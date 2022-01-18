@@ -101,13 +101,13 @@ def gen_wavelength_file(rad_file,out_dir):
     return wavelength_file
 
 
-def surface_config_gen(windows,wavelength_file,surface_file,out_config,prior = 'weak'):
+def surface_config_gen(windows,out_config,prior = 'weak'):
 
     surfaces= ['filtered_other','filtered_veg','filtered_ocean','surface_Liquids']
 
     surface_config = {}
-    surface_config["output_model_file"]= surface_file
-    surface_config["wavelength_file"]= wavelength_file
+    surface_config["output_model_file"]= 'surface.mat'
+    surface_config["wavelength_file"]= 'wavelength_fit.txt'
     surface_config["normalize"]="Euclidean"
     surface_config["reference_windows"]= windows
     surface_config["sources"] = []
@@ -121,3 +121,12 @@ def surface_config_gen(windows,wavelength_file,surface_file,out_config,prior = '
 
     with open(out_config, 'w') as outfile:
         json.dump(surface_config,outfile,indent=3)
+
+
+
+
+
+
+
+
+
