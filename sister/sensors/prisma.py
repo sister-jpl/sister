@@ -210,10 +210,10 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
         if (iterator_v.current_line >=2) and (iterator_v.current_line <= 997):
             if (measurement == 'rdn') & shift_correct:
                 vnir_interpolator = interp1d(vnir_waves+shift_surf_smooth[iterator_v.current_line-2,:63],
-                                               chunk_v[2:-2,:],fill_value = "extrapolate",kind='cubic')
+                                               chunk_v[2:-2,:],fill_value = "extrapolate",kind='linear')
                 chunk_v = vnir_interpolator(vnir_waves)
                 swir_interpolator = interp1d(swir_waves+shift_surf_smooth[iterator_v.current_line-2,63:],
-                                               chunk_s[2:-2,:],fill_value = "extrapolate",kind='cubic')
+                                               chunk_s[2:-2,:],fill_value = "extrapolate",kind='linear')
                 chunk_s = swir_interpolator(swir_waves)
 
                 line = np.concatenate([chunk_v,chunk_s],axis=1)/1000.
@@ -223,7 +223,6 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
 
             if rad_correct:
                 line*=coeff_obj.data[:,0,:]
-
 
             writer.write_line(line, iterator_v.current_line-2)
 
