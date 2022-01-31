@@ -40,7 +40,7 @@ from ..utils.misc import download_file
 
 home = os.path.expanduser("~")
 
-def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj = False,res = 30):
+def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,match=False,proj = False,res = 30):
     '''
     This function exports three files:
         *_rdn* : Merged and optionally shift corrected radiance cube
@@ -65,7 +65,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
     temp_dir(str): Temporary directory for intermediate
     elev_dir (str): Directory zipped Copernicus elevation tiles or url to AWS Copernicus data
                     ex : 'https://copernicus-dem-30m.s3.amazonaws.com/'
-    shift (str) : URL of wavelength shift correction surface file
+    shift (str) : Filepath or URL of wavelength shift correction surface file
+    rad_coeff (str) : Filepath or URL of wavelength radiometric correction coefficients file
     match (bool) : Perform landsat image matching
     proj (bool) : Project image to UTM grid
     res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)
@@ -94,13 +95,33 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
 
     shift_correct = False
     if shift:
-        shift_file = temp_dir + 'shift_surface'
-        download_file(shift_file,shift)
-        download_file(shift_file + '.hdr',shift + '.hdr')
+        #Check if shift surface is local, else download
+        if os.path.isfile(shift):
+            shift_file = shift
+        else:
+            shift_file = temp_dir + 'shift_surface'
+            download_file(shift_file,shift)
+            download_file(shift_file + '.hdr',shift + '.hdr')
         shift_obj = ht.HyTools()
         shift_obj.read_file(shift_file, 'envi')
         shift_surf_smooth = shift_obj.get_band(0)
         shift_correct = True
+
+
+    rad_correct = False
+    if rad_coeff:
+        #Check if radiometric correction surface is local, else download
+        if os.path.isfile(rad_coeff):
+            rad_coeff_file = rad_coeff
+        else:
+            rad_coeff_file = temp_dir + 'rad_corr_surface'
+            download_file(rad_coeff_file,rad_coeff)
+            download_file(rad_coeff_file + '.hdr',rad_coeff + '.hdr')
+
+        coeff_obj = ht.HyTools()
+        coeff_obj.read_file(rad_coeff_file, 'envi')
+        coeff_obj.load_data()
+        rad_correct = True
 
     #Define output paths
     if proj:
@@ -199,6 +220,11 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None,match=False,proj =
 
             else:
                 line = np.concatenate([chunk_v,chunk_s],axis=1)[2:-2,:]/1000.
+
+            if rad_correct:
+                line*=coeff_obj.data[:,0,:]
+
+
             writer.write_line(line, iterator_v.current_line-2)
 
     #Load ancillary datasets
