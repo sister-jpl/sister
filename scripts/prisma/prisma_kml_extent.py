@@ -46,6 +46,10 @@ def main():
     base_name = os.path.basename(l1_zip).replace('.zip','')
     temp_dir =  "%s/temp_%s/" % (args.temp_dir,base_name)
     out_dir = args.out_dir
+    kml_file =  "%s/%s/" % (out_dir,
+                            os.path.basename(l1_zip).replace('zip','kml'))
+    if os.path.isfile(kml_file)
+        return
 
     print('Unzipping %s' % base_name)
     with zipfile.ZipFile(l1_zip,'r') as zipped:
@@ -90,7 +94,7 @@ def main():
                     schema=schema) as c:
         c.write(extent)
     print('Converting to KML')
-    os.system('ogr2ogr %s/%s %s >/dev/null 2>&1' % (out_dir,os.path.basename(l1_zip).replace('zip','kml'),temp_geojson))
+    os.system('ogr2ogr %s %s >/dev/null 2>&1' % (kml_file,temp_geojson))
     print('Deleting temporary files')
     shutil.rmtree(temp_dir)
 
