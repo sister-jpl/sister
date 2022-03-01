@@ -48,7 +48,7 @@ def main():
     out_dir = args.out_dir
     kml_file =  "%s/%s/" % (out_dir,
                             os.path.basename(l1_zip).replace('zip','kml'))
-    if os.path.isfile(kml_file)
+    if os.path.isfile(kml_file):
         return
 
     print('Unzipping %s' % base_name)
