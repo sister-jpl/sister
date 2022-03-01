@@ -46,9 +46,10 @@ def main():
     base_name = os.path.basename(l1_zip).replace('.zip','')
     temp_dir =  "%s/temp_%s/" % (args.temp_dir,base_name)
     out_dir = args.out_dir
-    kml_file =  "%s/%s/" % (out_dir,
+    kml_file =  "%s/%s" % (out_dir,
                             os.path.basename(l1_zip).replace('zip','kml'))
     if os.path.isfile(kml_file):
+        print('%s exists' % kml_file)
         return
 
     print('Unzipping %s' % base_name)
