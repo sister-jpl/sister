@@ -76,7 +76,7 @@ def dem_generate(longitude,latitude,elev_dir,temp_dir):
 
     if len(tiles_intersect) == 0:
         constant_elev = float(input("No overlapping tiles found, enter constant elevation for scene (m): "))
-        elevation = np.ones(longitude.shape.shape) * constant_elev
+        elevation = np.ones(longitude.shape) * constant_elev
     else:
         tile_string = "Found %s intersecting elevation tiles:" % len(tiles_intersect)
         for tile in tiles_intersect:
