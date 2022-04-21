@@ -91,7 +91,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
     with zipfile.ZipFile(l1_zip,'r') as zipped:
         zipped.extractall(temp_dir)
 
-    l1_obj  = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
+    l1_obj = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
 
     shift_correct = False
     if shift:
@@ -106,7 +106,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
         shift_obj.read_file(shift_file, 'envi')
         shift_surf_smooth = shift_obj.get_band(0)
         shift_correct = True
-
+        interp_kind = shift_obj.get_header()['description']
 
     rad_correct = False
     if rad_coeff:
@@ -210,10 +210,10 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
         if (iterator_v.current_line >=2) and (iterator_v.current_line <= 997):
             if (measurement == 'rdn') & shift_correct:
                 vnir_interpolator = interp1d(vnir_waves+shift_surf_smooth[iterator_v.current_line-2,:63],
-                                               chunk_v[2:-2,:],fill_value = "extrapolate",kind='linear')
+                                               chunk_v[2:-2,:],fill_value = "extrapolate",kind=interp_kind)
                 chunk_v = vnir_interpolator(vnir_waves)
                 swir_interpolator = interp1d(swir_waves+shift_surf_smooth[iterator_v.current_line-2,63:],
-                                               chunk_s[2:-2,:],fill_value = "extrapolate",kind='linear')
+                                               chunk_s[2:-2,:],fill_value = "extrapolate",kind=interp_kind)
                 chunk_s = swir_interpolator(swir_waves)
 
                 line = np.concatenate([chunk_v,chunk_s],axis=1)/1000.
@@ -472,4 +472,3 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
 
     logging.info('Deleting temporary files')
     shutil.rmtree(temp_dir)
-
