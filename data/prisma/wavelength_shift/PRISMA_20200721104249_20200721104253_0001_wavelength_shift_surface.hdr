@@ -1,4 +1,5 @@
 ENVI
+description = cubic
 bands = 1
 byte order = 0
 data type = 4
