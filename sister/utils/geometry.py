@@ -29,11 +29,9 @@ import statsmodels.api as sm
 import ray
 import pyproj
 from skimage.util import view_as_blocks
-
-try:
-    import gdal
-except:
-    from osgeo import gdal
+import hytools_lite as htl
+from hytools_lite.io.envi import WriteENVI
+from scipy.stats import circmean
 
 #Temporary fix.....
 try:
@@ -411,3 +409,110 @@ def get_landsat_image(longitude,latitude,month,max_cloud = 5,band=5,project = Tr
 
         return values,lons,lats
 
+
+def rotate_coords(x_i,y_i,x_p,y_p,theta):
+    '''Rotate coordinates (xi,yi) theta degrees around point (xp,yp)
+    '''
+    theta = np.radians(theta)
+    x_r = x_p + ((x_i-x_p)*np.cos(theta)) - ((y_i-y_p)*np.sin(theta))
+    y_r = y_p + ((x_i-x_p)*np.sin(theta)) + ((y_i-y_p)*np.cos(theta))
+    return x_r,y_r
+
+def resample(in_file,out_dir,resolution,verbose = True):
+    ''' Perform a two-step spatial resampling to . First, pixels are aggregated and
+    averaged, next a nearest neighbor algorithm is used to resample images to resolution.
+    '''
+
+    out_image = out_dir + '/' + os.path.basename(in_file)
+    image = htl.HyTools()
+    image.read_file(in_file,'envi')
+
+    x_ul = float(image.map_info[3])
+    y_ul = float(image.map_info[4])
+    pixel_res = float(image.map_info[5])
+
+    if 'rotation' in image.map_info[-1]:
+        rotation = 360 + float(image.map_info[-1].split('=')[-1])
+    else:
+        rotation = 0
+
+    # Calculate rotated and unrotated coords
+    y_ind,x_ind = np.indices((image.lines,image.columns))
+    y_rcoord = y_ul - y_ind*pixel_res
+    x_rcoord = x_ul + x_ind*pixel_res
+    if rotation != 0:
+        x_coord,y_coord = rotate_coords(x_rcoord,y_rcoord,x_ul,y_ul,rotation)
+    else:
+        x_coord,y_coord = x_rcoord,y_rcoord
+
+    bin_size = int(np.round(resolution/pixel_res))
+    if verbose:
+        print("Aggregating every %s pixels" % bin_size)
+
+    lines =bin_size*(image.lines//bin_size)
+    columns =bin_size*(image.columns//bin_size)
+
+    y_coord_bin = np.nanmean(view_as_blocks(y_coord[:lines,:columns],
+                                     (bin_size,bin_size)),axis=(2,3))
+    x_coord_bin= np.nanmean(view_as_blocks(x_coord[:lines,:columns],
+                                     (bin_size,bin_size)),axis=(2,3))
+
+    # Get extent of output array
+    xmax = int(resolution * (x_coord_bin.max()//resolution)) + resolution
+    ymax = int(resolution * (y_coord_bin.max()//resolution)) + resolution
+    xmin = int(resolution * (x_coord_bin.min()//resolution)) - resolution
+    ymin = int(resolution * (y_coord_bin.min()//resolution)) - resolution
+
+    out_columns = int((xmax-xmin)/resolution)
+    out_lines =  int((ymax-ymin)/resolution)
+
+    #Calculate coordinates of output array
+    image_shape = (out_lines,out_columns)
+    y_coord_out,x_coord_out = np.indices(image_shape)*resolution
+    y_coord_out = ymax -  y_coord_out
+    x_coord_out = xmin + x_coord_out
+
+    #Create tree to convert pixels to geolocated pixels
+    src_points =np.concatenate([np.expand_dims(x_coord_bin.flatten(),axis=1),
+                                np.expand_dims(y_coord_bin.flatten(),axis=1)],axis=1)
+    tree = cKDTree(src_points,balanced_tree= True)
+
+    dst_points = np.concatenate([np.expand_dims(x_coord_out.flatten(),axis=1),
+                                 np.expand_dims(y_coord_out.flatten(),axis=1)],axis=1)
+
+    dists, indexes = tree.query(dst_points,k=1)
+    indices_int = np.unravel_index(indexes,x_coord_bin.shape)
+    mask = dists.reshape(image_shape) >resolution
+
+    out_header = image.get_header()
+    out_header['lines'] = out_lines
+    out_header['samples'] = out_columns
+    out_header['map info'][3] = str(xmin)
+    out_header['map info'][4] = str(ymax)
+    out_header['map info'][5:7] = resolution,resolution
+    out_header['map info'][-1] ='rotation=0.0000'
+    out_header['byte order'] = 0
+    out_header['data ignore value'] = image.no_data
+
+    writer = WriteENVI(out_image,out_header)
+    iterator =image.iterate(by = 'band')
+
+    while not iterator.complete:
+        if verbose &  (iterator.current_band%10 == 0):
+            print("%s/%s" % (iterator.current_band,image.bands))
+        band = np.copy(iterator.read_next()).astype(float)
+        band[~image.mask['no_data']] = np.nan
+        bins  = view_as_blocks(band[:lines,:columns],(bin_size,bin_size))
+
+        if (iterator.current_band in [1,3,7]) and ('obs' in image.base_name):
+            bins = np.radians(bins)
+            band = circmean(bins,axis=2,nan_policy = 'omit')
+            band = circmean(band,axis=2,nan_policy = 'omit')
+            band = np.degrees(band)
+        else:
+            band = np.nanmean(bins,axis=(2,3))
+
+        band = band[indices_int[0],indices_int[1]].reshape(image_shape)
+        band[mask]= image.no_data
+        band[np.isnan(band)]= image.no_data
+        writer.write_band(band,iterator.current_band)
