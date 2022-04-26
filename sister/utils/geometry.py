@@ -29,8 +29,8 @@ import statsmodels.api as sm
 import ray
 import pyproj
 from skimage.util import view_as_blocks
-import hytools_lite as htl
-from hytools_lite.io.envi import WriteENVI
+import hytools as htl
+from hytools.io.envi import WriteENVI
 from scipy.stats import circmean
 
 #Temporary fix.....
