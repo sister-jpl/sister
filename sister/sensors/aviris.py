@@ -153,3 +153,5 @@ def preprocess(input_tar,out_dir,temp_dir, resolution ='native'):
             shutil.move(file + '.hdr',out_dir)
         else:
             resample(file,out_dir,resolution)
+
+    shutil.rmtree(tar_contents[0])
