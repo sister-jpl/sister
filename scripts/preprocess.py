@@ -83,11 +83,6 @@ def main():
         print('Unrecognized input sensor')
 
 
-
-
-
-
-
 if __name__=='__main__':
 
     main()
