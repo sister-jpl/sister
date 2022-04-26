@@ -20,8 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import os
 import shutil
 import tarfile
-import hytools_lite as ht
-from hytools_lite.io.envi import WriteENVI
+import hytools as ht
+from hytools.io.envi import WriteENVI
 import numpy as np
 from ..utils.geometry import resample
 
