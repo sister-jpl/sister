@@ -100,6 +100,7 @@ def preprocess(input_tar,out_dir,temp_dir, resolution ='native'):
         rdn_file = [x for x in tar_contents if x.endswith('img')][0]
         loc_file = [x for x in tar_contents if x.endswith('loc')][0]
         glt_file = [x for x in tar_contents if x.endswith('glt')][0]
+        create_loc_ort(loc_file,glt_file)
 
     #AVIRIS Classic
     elif base_name.startswith('f'):
