@@ -64,15 +64,15 @@ def main():
     #parser.add_argument('resolution',help="Output resolution", type = int)
 
     args = parser.parse_args()
-
     base_name = os.path.basename(args.input)
 
     if base_name.startswith('PRS'):
         aws_cop_url='https://copernicus-dem-30m.s3.amazonaws.com/'
-        shift_surface='https://github.com/EnSpec/sister/raw/master/data/prisma/wavelength_shift/PRISMA_20200721104249_20200721104253_0001_wavelength_shift_surface'
+        shift_surface='https://github.com/EnSpec/sister/raw/sister-dev/data/prisma/wavelength_shift/PRISMA_20200721104249_20200721104253_0001_wavelength_shift_surface'
         prisma.he5_to_envi(args.input,args.out_dir,args.temp_dir,
                            aws_cop_url,
-                           shift = shift_surface,match=False,
+                           shift = shift_surface,
+                           match=False,
                            proj = True,res = 30)
     elif base_name.startswith('ang') or base_name.startswith('f'):
         aviris.preprocess(args.input,args.out_dir,args.temp_dir,
@@ -81,6 +81,11 @@ def main():
         print('DESIS')
     else:
         print('Unrecognized input sensor')
+
+
+
+
+
 
 
 if __name__=='__main__':
