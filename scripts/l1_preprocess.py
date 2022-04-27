@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import argparse
 import os
-from sister.sensors import prisma,aviris
+from sister.sensors import prisma,aviris,desis
 
 
 def main():
@@ -65,9 +65,9 @@ def main():
 
     args = parser.parse_args()
     base_name = os.path.basename(args.input)
+    aws_cop_url='https://copernicus-dem-30m.s3.amazonaws.com/'
 
     if base_name.startswith('PRS'):
-        aws_cop_url='https://copernicus-dem-30m.s3.amazonaws.com/'
         shift_surface='https://github.com/EnSpec/sister/raw/sister-dev/data/prisma/wavelength_shift/PRISMA_20200721104249_20200721104253_0001_wavelength_shift_surface'
         prisma.he5_to_envi(args.input,args.out_dir,args.temp_dir,
                            aws_cop_url,
@@ -78,7 +78,8 @@ def main():
         aviris.preprocess(args.input,args.out_dir,args.temp_dir,
                           resolution = 30)
     elif base_name.startswith('DESIS'):
-        print('DESIS')
+        desis.l1c_process(args.input,args.out_dir,args.temp_dir,
+                           aws_cop_url)
     else:
         print('Unrecognized input sensor')
 
