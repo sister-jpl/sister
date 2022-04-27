@@ -29,7 +29,7 @@ import statsmodels.api as sm
 import ray
 import pyproj
 from skimage.util import view_as_blocks
-import hytools as htl
+import hytools as ht
 from hytools.io.envi import WriteENVI
 from scipy.stats import circmean
 
@@ -418,13 +418,13 @@ def rotate_coords(x_i,y_i,x_p,y_p,theta):
     y_r = y_p + ((x_i-x_p)*np.sin(theta)) + ((y_i-y_p)*np.cos(theta))
     return x_r,y_r
 
-def resample(in_file,out_dir,resolution,verbose = True):
+def resample(in_file,out_dir,resolution,verbose = True, unrotate = False):
     ''' Perform a two-step spatial resampling to . First, pixels are aggregated and
     averaged, next a nearest neighbor algorithm is used to resample images to resolution.
     '''
 
     out_image = out_dir + '/' + os.path.basename(in_file)
-    image = htl.HyTools()
+    image = ht.HyTools()
     image.read_file(in_file,'envi')
 
     x_ul = float(image.map_info[3])
@@ -440,7 +440,8 @@ def resample(in_file,out_dir,resolution,verbose = True):
     y_ind,x_ind = np.indices((image.lines,image.columns))
     y_rcoord = y_ul - y_ind*pixel_res
     x_rcoord = x_ul + x_ind*pixel_res
-    if rotation != 0:
+
+    if unrotate:
         x_coord,y_coord = rotate_coords(x_rcoord,y_rcoord,x_ul,y_ul,rotation)
     else:
         x_coord,y_coord = x_rcoord,y_rcoord
@@ -490,7 +491,8 @@ def resample(in_file,out_dir,resolution,verbose = True):
     out_header['map info'][3] = str(xmin)
     out_header['map info'][4] = str(ymax)
     out_header['map info'][5:7] = resolution,resolution
-    out_header['map info'][-1] ='rotation=0.0000'
+    if unrotate:
+        out_header['map info'][-1] ='rotation=0.0000'
     out_header['byte order'] = 0
     out_header['data ignore value'] = image.no_data
 
