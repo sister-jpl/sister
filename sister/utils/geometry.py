@@ -153,12 +153,11 @@ def ecef2dda(x,y,z):
     return lon, lat, alt
 
 
-
 def utm2dd(easting,northing,zone,direction):
     '''Convert coordinates in UTM eastings and northings into
         decimal degrees
     '''
-    if direction == 'North':
+    if direction.startswith('N'):
         epsg_dir = 6
     else:
         epsg_dir = 7
