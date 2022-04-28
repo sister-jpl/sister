@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import datetime as dt
+import importlib
 import logging
 import os
 import zipfile
@@ -26,7 +27,6 @@ import shutil
 import h5py
 import hytools as ht
 import pandas as pd
-import pkgutil
 from hytools.io.envi import WriteENVI,envi_header_dict
 from hytools.topo.topo import calc_cosine_i
 import numpy as np
@@ -41,12 +41,7 @@ from ..utils.misc import download_file
 
 home = os.path.expanduser("~")
 
-def test_load():
-    rad_coeff_file = pkgutil.get_data(__name__, "data/PRS_20210409105743_20210409105748_0001_radcoeff_surface.npz")
-    test = np.load(rad_coeff_file)
-    return test
-
-def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
+def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = False,
                 match=False,proj = False,res = 30):
     '''
     This function exports three files:
@@ -101,37 +96,15 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
 
     l1_obj = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
 
-    # shift_correct = False
-    # if shift:
-    #     #Check if shift surface is local, else download
-    #     # if os.path.isfile(shift):
-    #     #     shift_file = ''shift''
-    #     # else:
-    #     #     shift_file = temp_dir + 'shift_surface'
-    #     #     download_file(shift_file,shift)
-    #     #     download_file(shift_file + '.hdr',shift + '.hdr')
-    #     # shift_obj = ht.HyTools()
-    #     # shift_obj.read_file(shift_file, 'envi')
-    #     # shift_surf_smooth = shift_obj.get_band(0)
-    #     # shift_correct = True
-    #     # interp_kind = shift_obj.get_header()['description']
+    if shift:
+        shift_file = importlib.resources.open_binary("sister.data","PRS_20210409105743_20210409105748_0001_wavelength_shift_surface.npz")
+        shift_obj = np.load(shift_file)
+        shift_surface = shift_obj['shifts']
+        interp_kind = shift_obj['interp_kind']
 
-    # rad_correct = False
-
-    # # if rad_coeff:
-    # #     #Check if radiometric correction surface is local, else download
-    # #     if os.path.isfile(rad_coeff):
-    # #         rad_coeff_file = rad_coeff
-    # #     else:
-    # #         rad_coeff_file = temp_dir + 'rad_corr_surface'
-    # #         download_file(rad_coeff_file,rad_coeff)
-    # #         download_file(rad_coeff_file + '.hdr',rad_coeff + '.hdr')
-
-    # #     coeff_obj = ht.HyTools()
-    # #     coeff_obj.read_file(rad_coeff_file, 'envi')
-    # #     coeff_obj.load_data()
-    # #     rad_correct = True
-
+    if rad_coeff:
+        coeff_file = importlib.resources.open_binary("sister.data","PRS_20210409105743_20210409105748_0001_radcoeff_surface.npz")
+        coeff_obj = np.load(coeff_file)
 
     #Define output paths
     if proj:
@@ -218,11 +191,11 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
         chunk_s =np.flip(chunk_s,axis=1)
 
         if (iterator_v.current_line >=2) and (iterator_v.current_line <= 997):
-            if (measurement == 'rdn') & shift_correct:
-                vnir_interpolator = interp1d(vnir_waves+shift_surf_smooth[iterator_v.current_line-2,:63],
+            if (measurement == 'rdn') & shift:
+                vnir_interpolator = interp1d(vnir_waves+shift_surface[iterator_v.current_line-2,:63],
                                                chunk_v[2:-2,:],fill_value = "extrapolate",kind=interp_kind)
                 chunk_v = vnir_interpolator(vnir_waves)
-                swir_interpolator = interp1d(swir_waves+shift_surf_smooth[iterator_v.current_line-2,63:],
+                swir_interpolator = interp1d(swir_waves+shift_surface[iterator_v.current_line-2,63:],
                                                chunk_s[2:-2,:],fill_value = "extrapolate",kind=interp_kind)
                 chunk_s = swir_interpolator(swir_waves)
 
@@ -231,8 +204,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
             else:
                 line = np.concatenate([chunk_v,chunk_s],axis=1)[2:-2,:]/1000.
 
-            if rad_correct:
-                line*=coeff_obj.data[:,iterator_v.current_line,:]
+            if rad_coeff:
+                line*=coeff_obj['coeffs'][iterator_v.current_line,:]
 
             writer.write_line(line, iterator_v.current_line-2)
 
