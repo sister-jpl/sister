@@ -5,4 +5,4 @@ data type = 4
 interleave = bsq
 lines = 996
 samples = 230
-band_names = {wavelength shift(nm)}
+band_names = {rad coeff}
