@@ -223,7 +223,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
                 line = np.concatenate([chunk_v,chunk_s],axis=1)[2:-2,:]/1000.
 
             if rad_correct:
-                line*=coeff_obj.data[:,0,:]
+                line*=coeff_obj.data[:,iterator_v.current_line,:]
 
             writer.write_line(line, iterator_v.current_line-2)
 
