@@ -38,6 +38,7 @@ from ..utils.terrain import *
 from ..utils.geometry import *
 from ..utils.ancillary import *
 from ..utils.misc import download_file
+from .. import data
 
 home = os.path.expanduser("~")
 
@@ -97,13 +98,13 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     l1_obj = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
 
     if shift:
-        shift_file = importlib.resources.open_binary("sister.data","PRS_20210409105743_20210409105748_0001_wavelength_shift_surface.npz")
+        shift_file = importlib.resources.open_binary(data,"PRS_20210409105743_20210409105748_0001_wavelength_shift_surface.npz")
         shift_obj = np.load(shift_file)
         shift_surface = shift_obj['shifts']
-        interp_kind = shift_obj['interp_kind']
-
+        #interp_kind = shift_obj['interp_kind']
+        interp_kind='quadratic'
     if rad_coeff:
-        coeff_file = importlib.resources.open_binary("sister.data","PRS_20210409105743_20210409105748_0001_radcoeff_surface.npz")
+        coeff_file = importlib.resources.open_binary(data,"PRS_20210409105743_20210409105748_0001_radcoeff_surface.npz")
         coeff_obj = np.load(coeff_file)
 
     #Define output paths
@@ -205,7 +206,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
                 line = np.concatenate([chunk_v,chunk_s],axis=1)[2:-2,:]/1000.
 
             if rad_coeff:
-                line*=coeff_obj['coeffs'][iterator_v.current_line,:]
+                line*=coeff_obj['coeffs'][iterator_v.current_line-2,:]
 
             writer.write_line(line, iterator_v.current_line-2)
 
