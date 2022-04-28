@@ -8,7 +8,7 @@ source activate sister
 mkdir output temp
 input_file=$(ls input/*.*)
 
-python ${pge_dir}/scripts/l1_preprocess.py $input_file output/ temp/
+python ${pge_dir}/scripts/l1_preprocess.py $input_file output/ temp/ $1
 
 cd output
 out_dir=$(ls ./)
