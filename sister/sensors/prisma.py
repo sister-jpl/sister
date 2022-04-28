@@ -101,36 +101,36 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
 
     l1_obj = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
 
-    shift_correct = False
-    if shift:
-        #Check if shift surface is local, else download
-        # if os.path.isfile(shift):
-        #     shift_file = ''shift''
-        # else:
-        #     shift_file = temp_dir + 'shift_surface'
-        #     download_file(shift_file,shift)
-        #     download_file(shift_file + '.hdr',shift + '.hdr')
-        # shift_obj = ht.HyTools()
-        # shift_obj.read_file(shift_file, 'envi')
-        # shift_surf_smooth = shift_obj.get_band(0)
-        # shift_correct = True
-        # interp_kind = shift_obj.get_header()['description']
+    # shift_correct = False
+    # if shift:
+    #     #Check if shift surface is local, else download
+    #     # if os.path.isfile(shift):
+    #     #     shift_file = ''shift''
+    #     # else:
+    #     #     shift_file = temp_dir + 'shift_surface'
+    #     #     download_file(shift_file,shift)
+    #     #     download_file(shift_file + '.hdr',shift + '.hdr')
+    #     # shift_obj = ht.HyTools()
+    #     # shift_obj.read_file(shift_file, 'envi')
+    #     # shift_surf_smooth = shift_obj.get_band(0)
+    #     # shift_correct = True
+    #     # interp_kind = shift_obj.get_header()['description']
 
-    rad_correct = False
+    # rad_correct = False
 
-    # if rad_coeff:
-    #     #Check if radiometric correction surface is local, else download
-    #     if os.path.isfile(rad_coeff):
-    #         rad_coeff_file = rad_coeff
-    #     else:
-    #         rad_coeff_file = temp_dir + 'rad_corr_surface'
-    #         download_file(rad_coeff_file,rad_coeff)
-    #         download_file(rad_coeff_file + '.hdr',rad_coeff + '.hdr')
+    # # if rad_coeff:
+    # #     #Check if radiometric correction surface is local, else download
+    # #     if os.path.isfile(rad_coeff):
+    # #         rad_coeff_file = rad_coeff
+    # #     else:
+    # #         rad_coeff_file = temp_dir + 'rad_corr_surface'
+    # #         download_file(rad_coeff_file,rad_coeff)
+    # #         download_file(rad_coeff_file + '.hdr',rad_coeff + '.hdr')
 
-    #     coeff_obj = ht.HyTools()
-    #     coeff_obj.read_file(rad_coeff_file, 'envi')
-    #     coeff_obj.load_data()
-    #     rad_correct = True
+    # #     coeff_obj = ht.HyTools()
+    # #     coeff_obj.read_file(rad_coeff_file, 'envi')
+    # #     coeff_obj.load_data()
+    # #     rad_correct = True
 
 
     #Define output paths
