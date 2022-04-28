@@ -20,8 +20,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import argparse
 import os
+import sister
 from sister.sensors import prisma,aviris,desis
 
+sister_path = os.path.dirname(sister.__file__)
 
 def main():
     '''
@@ -61,22 +63,24 @@ def main():
     parser.add_argument('input',help="Path to compressed input file", type = str)
     parser.add_argument('out_dir',help="Output directory", type = str)
     parser.add_argument('temp_dir',help="Temporary directory", type = str)
-    #parser.add_argument('resolution',help="Output resolution", type = int)
+    parser.add_argument('resolution',help="Output resample resolution", default = None)
 
     args = parser.parse_args()
     base_name = os.path.basename(args.input)
     aws_cop_url='https://copernicus-dem-30m.s3.amazonaws.com/'
 
     if base_name.startswith('PRS'):
-        shift_surface='https://github.com/EnSpec/sister/raw/sister-dev/data/prisma/wavelength_shift/PRISMA_20200721104249_20200721104253_0001_wavelength_shift_surface'
         prisma.he5_to_envi(args.input,args.out_dir,args.temp_dir,
                            aws_cop_url,
-                           shift = shift_surface,
+                           shift = True,
+                           rad_coeff = True,
                            match=False,
-                           proj = True,res = 30)
+                           proj = True)
+
     elif base_name.startswith('ang') or base_name.startswith('f'):
         aviris.preprocess(args.input,args.out_dir,args.temp_dir,
-                          resolution = 30)
+                          res = args.resolution)
+
     elif base_name.startswith('DESIS'):
         desis.l1c_process(args.input,args.out_dir,args.temp_dir,
                            aws_cop_url)
