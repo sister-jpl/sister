@@ -63,7 +63,7 @@ def main():
     parser.add_argument('input',help="Path to compressed input file", type = str)
     parser.add_argument('out_dir',help="Output directory", type = str)
     parser.add_argument('temp_dir',help="Temporary directory", type = str)
-    parser.add_argument('resolution',help="Output resample resolution",type=int, default = None)
+    parser.add_argument('resolution',help="Output resample resolution",type=int, default = 0)
 
     args = parser.parse_args()
     base_name = os.path.basename(args.input)
