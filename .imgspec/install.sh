@@ -1,5 +1,3 @@
-set -x
-
 run_dir=$('pwd')
 imgspec_dir=$(cd "$(dirname "$0")" ; pwd -P)
 pge_dir=$(dirname ${imgspec_dir})

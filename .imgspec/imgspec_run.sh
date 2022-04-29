@@ -12,5 +12,5 @@ python ${pge_dir}/scripts/l1_preprocess.py $input_file output/ temp/ $1
 
 cd output
 out_dir=$(ls ./)
-tar -czvf $out_dir_l1p.tar.gz $out_dir
+tar -czvf ${out_dir}_l1p.tar.gz $out_dir
 rm -r $out_dir
