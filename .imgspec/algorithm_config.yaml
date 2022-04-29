@@ -22,4 +22,4 @@ inputs:
     type: file
   - name: resolution
     type: positional
-    default: "None"
+    default: 0
