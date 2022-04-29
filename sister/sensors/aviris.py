@@ -66,7 +66,7 @@ def create_loc_ort(loc_file,glt_file):
     writer.write_band(elv_proj,2)
     writer.close()
 
-def preprocess(input_tar,out_dir,temp_dir, res ='native'):
+def preprocess(input_tar,out_dir,temp_dir,res = None):
     '''
     input_tar = '/data2/avcl/raw/f080709t01p00r15.tar.gz'
     input_tar = '/data2/avng/rdn/ang20170901t195659.tar.gz'
@@ -148,7 +148,7 @@ def preprocess(input_tar,out_dir,temp_dir, res ='native'):
     loc_ort_file = loc_file+'_ort'
 
     for file in [obs_ort_file,rdn_file,loc_ort_file]:
-        if res == 'native':
+        if res is None:
             shutil.move(file,out_dir)
             shutil.move(file + '.hdr',out_dir)
         else:
