@@ -14,4 +14,4 @@ cd output
 out_dir=$(ls ./)
 mv ${out_dir} ${out_dir}_l1p
 tar -czvf ${out_dir}_l1p.tar.gz ${out_dir}_l1p
-rm -r $out_dir
+rm -r ${out_dir}_l1p
