@@ -82,10 +82,17 @@ class Projector():
         self.mask = distances > 2*pixel_size
         self.output_shape = (int(lines/2),int(columns/2))
 
-    def project_band(self,band,no_data):
+    def project_band(self,band,no_data,angular = False):
         band = np.copy(band[self.indices[0],self.indices[1]].reshape(self.inter_shape))
         band[self.mask] = np.nan
-        band = np.nanmean(view_as_blocks(band, (2,2)),axis=(2,3))
+        bins = view_as_blocks(band, (2,2))
+        if angular:
+            bins = np.radians(bins)
+            band = circmean(bins,axis=2,nan_policy = 'omit')
+            band = circmean(band,axis=2,nan_policy = 'omit')
+            band = np.degrees(band)
+        else:
+            band = np.nanmean(bins,axis=(2,3))
         band[np.isnan(band)] = no_data
         return band
 
@@ -505,7 +512,7 @@ def resample(in_file,out_dir,resolution,verbose = True, unrotate = False):
         band[~image.mask['no_data']] = np.nan
         bins  = view_as_blocks(band[:lines,:columns],(bin_size,bin_size))
 
-        if (iterator.current_band in [1,3,7]) and ('obs' in image.base_name):
+        if (iterator.current_band in [1,2,3,4,7]) and ('obs' in image.base_name):
             bins = np.radians(bins)
             band = circmean(bins,axis=2,nan_policy = 'omit')
             band = circmean(band,axis=2,nan_policy = 'omit')

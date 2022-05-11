@@ -446,7 +446,11 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             writer = WriteENVI(output_name,out_header)
 
             while not iterator.complete:
-                band = project.project_band(iterator.read_next(),-9999)
+                if (file == 'obs') & (iterator.current_band in [1,2,3,4,7]):
+                    angular = True
+                else:
+                    angular = False
+                band = project.project_band(iterator.read_next(),-9999,angular=angular)
                 band[band == -9999] = np.nan
                 band = np.nanmean(view_as_blocks(band[:out_lines,:out_cols], (blocksize,blocksize)),axis=(2,3))
                 if file == 'rdn':
