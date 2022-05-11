@@ -452,7 +452,16 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
                     angular = False
                 band = project.project_band(iterator.read_next(),-9999,angular=angular)
                 band[band == -9999] = np.nan
-                band = np.nanmean(view_as_blocks(band[:out_lines,:out_cols], (blocksize,blocksize)),axis=(2,3))
+                bins =view_as_blocks(band[:out_lines,:out_cols], (blocksize,blocksize))
+
+                if angular:
+                    bins = np.radians(bins)
+                    band = circmean(bins,axis=2,nan_policy = 'omit')
+                    band = circmean(band,axis=2,nan_policy = 'omit')
+                    band = np.degrees(band)
+                else:
+                    band = np.nanmean(bins,axis=(2,3))
+
                 if file == 'rdn':
                     band[band<0] = 0
                 band[np.isnan(band)] = -9999
