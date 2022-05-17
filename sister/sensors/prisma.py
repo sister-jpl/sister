@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import datetime as dt
+import importlib
 import logging
 import os
 import zipfile
@@ -37,10 +38,12 @@ from ..utils.terrain import *
 from ..utils.geometry import *
 from ..utils.ancillary import *
 from ..utils.misc import download_file
+from .. import data
 
 home = os.path.expanduser("~")
 
-def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,match=False,proj = False,res = 30):
+def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = False,
+                match=False,proj = False,res = 30):
     '''
     This function exports three files:
         *_rdn* : Merged and optionally shift corrected radiance cube
@@ -73,8 +76,9 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
     '''
 
     base_name = os.path.basename(l1_zip)[16:-4]
+    out_dir = "%s/PRS_%s/" % (out_dir,base_name)
 
-    if not os.path.isdir(out_dir):
+    if not os.path.isdir(out_dir ):
         os.mkdir(out_dir)
 
     logging.basicConfig(filename='%s/PRS_%s.log' % (out_dir,base_name),
@@ -93,35 +97,15 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
 
     l1_obj = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
 
-    shift_correct = False
     if shift:
-        #Check if shift surface is local, else download
-        if os.path.isfile(shift):
-            shift_file = shift
-        else:
-            shift_file = temp_dir + 'shift_surface'
-            download_file(shift_file,shift)
-            download_file(shift_file + '.hdr',shift + '.hdr')
-        shift_obj = ht.HyTools()
-        shift_obj.read_file(shift_file, 'envi')
-        shift_surf_smooth = shift_obj.get_band(0)
-        shift_correct = True
-        interp_kind = shift_obj.get_header()['description']
-
-    rad_correct = False
+        shift_file = importlib.resources.open_binary(data,"PRS_20210409105743_20210409105748_0001_wavelength_shift_surface.npz")
+        shift_obj = np.load(shift_file)
+        shift_surface = shift_obj['shifts']
+        #interp_kind = shift_obj['interp_kind']
+        interp_kind='quadratic'
     if rad_coeff:
-        #Check if radiometric correction surface is local, else download
-        if os.path.isfile(rad_coeff):
-            rad_coeff_file = rad_coeff
-        else:
-            rad_coeff_file = temp_dir + 'rad_corr_surface'
-            download_file(rad_coeff_file,rad_coeff)
-            download_file(rad_coeff_file + '.hdr',rad_coeff + '.hdr')
-
-        coeff_obj = ht.HyTools()
-        coeff_obj.read_file(rad_coeff_file, 'envi')
-        coeff_obj.load_data()
-        rad_correct = True
+        coeff_file = importlib.resources.open_binary(data,"PRS_20210409105743_20210409105748_0001_radcoeff_surface.npz")
+        coeff_obj = np.load(coeff_file)
 
     #Define output paths
     if proj:
@@ -208,11 +192,11 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
         chunk_s =np.flip(chunk_s,axis=1)
 
         if (iterator_v.current_line >=2) and (iterator_v.current_line <= 997):
-            if (measurement == 'rdn') & shift_correct:
-                vnir_interpolator = interp1d(vnir_waves+shift_surf_smooth[iterator_v.current_line-2,:63],
+            if (measurement == 'rdn') & shift:
+                vnir_interpolator = interp1d(vnir_waves+shift_surface[iterator_v.current_line-2,:63],
                                                chunk_v[2:-2,:],fill_value = "extrapolate",kind=interp_kind)
                 chunk_v = vnir_interpolator(vnir_waves)
-                swir_interpolator = interp1d(swir_waves+shift_surf_smooth[iterator_v.current_line-2,63:],
+                swir_interpolator = interp1d(swir_waves+shift_surface[iterator_v.current_line-2,63:],
                                                chunk_s[2:-2,:],fill_value = "extrapolate",kind=interp_kind)
                 chunk_s = swir_interpolator(swir_waves)
 
@@ -221,8 +205,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
             else:
                 line = np.concatenate([chunk_v,chunk_s],axis=1)[2:-2,:]/1000.
 
-            if rad_correct:
-                line*=coeff_obj.data[:,0,:]
+            if rad_coeff:
+                line*=coeff_obj['coeffs'][iterator_v.current_line-2,:]
 
             writer.write_line(line, iterator_v.current_line-2)
 
@@ -361,8 +345,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
         project.query_tree(warp_east,warp_north,pixel_size)
 
         # Project independent variables
-        sensor_az_prj = project.project_band(sensor_az,-9999)
-        sensor_zn_prj = project.project_band(sensor_zn,-9999)
+        sensor_az_prj = project.project_band(sensor_az,-9999,angular=True)
+        sensor_zn_prj = project.project_band(sensor_zn,-9999,angular=True)
         elevation_prj = project.project_band(elevation.astype(np.float),-9999)
 
         radiance = ht.HyTools()
@@ -462,9 +446,22 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = None, rad_coeff = None,
             writer = WriteENVI(output_name,out_header)
 
             while not iterator.complete:
-                band = project.project_band(iterator.read_next(),-9999)
+                if (file == 'obs') & (iterator.current_band in [1,2,3,4,7]):
+                    angular = True
+                else:
+                    angular = False
+                band = project.project_band(iterator.read_next(),-9999,angular=angular)
                 band[band == -9999] = np.nan
-                band = np.nanmean(view_as_blocks(band[:out_lines,:out_cols], (blocksize,blocksize)),axis=(2,3))
+                bins =view_as_blocks(band[:out_lines,:out_cols], (blocksize,blocksize))
+
+                if angular:
+                    bins = np.radians(bins)
+                    band = circmean(bins,axis=2,nan_policy = 'omit')
+                    band = circmean(band,axis=2,nan_policy = 'omit')
+                    band = np.degrees(band)
+                else:
+                    band = np.nanmean(bins,axis=(2,3))
+
                 if file == 'rdn':
                     band[band<0] = 0
                 band[np.isnan(band)] = -9999

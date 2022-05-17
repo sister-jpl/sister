@@ -48,7 +48,7 @@ def gaussian(x, mu, fwhm):
     sig = fwhm/(2* np.sqrt(2*np.log(2)))
     return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
-def geotiff_to_envi(l1b_zip,out_dir,temp_dir,elev_dir,
+def l1b_process(l1b_zip,out_dir,temp_dir,elev_dir,
                     match=None,proj = True, res = 30):
 
     '''
@@ -78,9 +78,6 @@ def geotiff_to_envi(l1b_zip,out_dir,temp_dir,elev_dir,
      match (str or list) : Pathname to Landsat image for image re-registration (recommended)
      proj (bool) : Project image to UTM grid
      res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)
-
-    This functions assumes that the L1B and L1C zipped radiance products are located in the
-    same directory
     '''
 
     base_name = os.path.basename(l1b_zip)[14:-4]
@@ -411,5 +408,241 @@ def geotiff_to_envi(l1b_zip,out_dir,temp_dir,elev_dir,
                     band[band<0] = 0
                 band[np.isnan(band)] = -9999
                 writer.write_band(band,iterator.current_band)
+    logging.info('Deleting temporary files')
+    shutil.rmtree(temp_dir)
+
+
+def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
+
+    '''
+     This function exports three files:
+         *_rad* : Merged and optionally shift corrected radiance cube
+         *_obs* : Observables file in the format of JPL obs files:
+                 1. Pathlength (m)
+                 2. To-sensor view azimuth angle (degrees)
+                 3. To-sensor view zenith angle (degrees)
+                 4. To-sun azimuth angle (degrees)
+                 5. To-sun zenith angle (degrees)
+                 6. Phase
+                 7. Slope (Degrees)
+                 8. Aspect (Degrees)
+                 9. Cosine i
+                 10. UTC decimal hours
+         *_loc* : Location file in the following format:
+                 1. Longitude (decimal degrees)
+                 2. Longitude (decimal degrees)
+                 3. Elevation (m)
+
+     l1c_zip(str): L1c zipped radiance data product path
+     out_dir(str): Output directory of ENVI datasets
+     temp_dir(str): Temporary directory for intermediate
+     elev_dir (str): Directory zipped Copernicus elevation tiles or url to AWS Copernicus data
+                    ex : 'https://copernicus-dem-30m.s3.amazonaws.com/'
+     match (str or list) : Pathname to Landsat image for image re-registration (recommended)
+     proj (bool) : Project image to UTM grid
+     res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)
+    '''
+
+    base_name = os.path.basename(l1c_zip)[14:-4]
+
+    out_dir = '%s/DESIS_%s/'% (out_dir,base_name)
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+
+    temp_dir = '%s/DESIS_%s/'% (temp_dir,base_name)
+    if not os.path.isdir(temp_dir):
+        os.mkdir(temp_dir)
+
+    zip_base  =os.path.basename(l1c_zip)
+    logging.info('Unzipping %s' % zip_base)
+    with zipfile.ZipFile(l1c_zip,'r') as zipped:
+        zipped.extractall(temp_dir)
+
+    l1c_file = gdal.Open('%s/DESIS-HSI-L1C-%s-SPECTRAL_IMAGE.tif' % (temp_dir,base_name))
+
+    # Parse relevant metadata from XML file, assume metadata are in same directory as iamges
+    tree = ET.parse('%s/DESIS-HSI-L1C-%s-METADATA.xml' % (temp_dir,base_name))
+    root = tree.getroot()
+    specific =  root[3]
+    band_meta = {}
+    for item in specific.findall('bandCharacterisation'):
+        for band in item:
+            for meta in band:
+                if meta.tag not in band_meta.keys():
+                    band_meta[meta.tag] = []
+                string =  str(meta.text.encode('utf8'))
+                string = string.replace('\\n',' ')
+                string = string.replace('b',' ')
+                string = string.replace("'",' ')
+                values= string.split(',')
+                values = [float(x) for x in values]
+                if len(values) == 1:
+                    values= values[0]
+                band_meta[meta.tag].append(values)
+    offset = np.array(band_meta['offsetOfBand'])
+    gain = np.array(band_meta['gainOfBand'])
+    waves = np.array(band_meta['wavelengthCenterOfBand'])
+    fwhm = np.array(band_meta['wavelengthWidthOfBand'])
+    response = np.array(band_meta['response'])
+    response_waves = np.array(band_meta['wavelengths'])
+
+    # Fit a gaussian to the reponse to determine center wavelength and fhwm
+    opt_waves = []
+    opt_fwhm = []
+    for i,wave in enumerate(waves):
+        popt, pcov = curve_fit(gaussian, response_waves[i],np.array(response[i])/max(response[i]),[waves[i],fwhm[i]])
+        opt_waves.append(popt[0])
+        opt_fwhm.append(popt[1])
+
+    # Get acquisition start and end time
+    base =  root[2]
+    time_str = base.findall('temporalCoverage')[0].findall('startTime')[0].text
+    time_str=time_str.replace('T',' ').replace('Z','')
+    start_time = dt.datetime.strptime(time_str,"%Y-%m-%d %H:%M:%S.%f")
+    start_time = start_time.replace(tzinfo=dt.timezone.utc)
+
+    time_str = base.findall('temporalCoverage')[0].findall('endTime')[0].text
+    time_str=time_str.replace('T',' ').replace('Z','')
+    end_time = dt.datetime.strptime(time_str,"%Y-%m-%d %H:%M:%S.%f")
+    end_time = end_time.replace(tzinfo=dt.timezone.utc)
+    date = dt.datetime.strftime(start_time , "%Y%m%d")
+
+    l1c_band = l1c_file.ReadAsArray().mean(axis=0)
+
+    # Get ISS altitude
+    altitude_m = float(base.findall('altitudeCoverage')[0].text)
+
+    raster = l1c_file.ReadAsArray()
+    mask = raster[1].astype(float)
+    mask = mask==mask[0][0]
+
+    rad_dict  = envi_header_dict()
+    rad_dict['lines']= l1c_file.RasterYSize
+    rad_dict['samples']= l1c_file.RasterXSize
+    rad_dict['bands']= len(waves)-1
+    rad_dict['wavelength']= opt_waves[1:]
+    rad_dict['fwhm']= opt_fwhm[1:]
+    rad_dict['interleave']= 'bil'
+    rad_dict['data type'] = 4
+    rad_dict['wavelength units'] = "nanometers"
+    rad_dict['byte order'] = 0
+    rad_dict['data ignore value'] = -9999
+    rad_dict['default bands'] = [np.argmin(np.abs(waves-1660)),
+                                  np.argmin(np.abs(waves-850)),
+                                  np.argmin(np.abs(waves-560))]
+    ulx,pixel_size,a,uly,b,c = l1c_file.GetGeoTransform()
+    projection = pyproj.Proj(l1c_file.GetProjection())
+    zone = int(projection.crs.utm_zone[:-1])
+    direction =projection.crs.utm_zone[-1]
+    map_info = ['UTM', 1, 1, ulx, uly,pixel_size,
+                           pixel_size,zone,direction,
+                           'WGS-84' , 'units=Meters']
+    rad_dict['map info'] = map_info
+    rad_file = '%sDESIS_%s_rdn_prj' % (out_dir,base_name)
+    loc_file = '%sDESIS_%s_loc_prj' % (out_dir,base_name)
+    obs_file = '%sDESIS_%s_obs_prj' % (out_dir,base_name)
+
+    writer = WriteENVI(rad_file,rad_dict)
+
+    #Write VNIR cube
+    logging.info('Exporting radiance data')
+    for line_num in range(l1c_file.RasterYSize):
+        line = raster[:,line_num,:].astype(float)
+        line = line*gain[:,np.newaxis] + offset[:,np.newaxis]
+        line = line[1:,:].T
+        line[mask[line_num]] =-9999
+        writer.write_line(line,line_num)
+    del raster
+
+    # Location datacube
+    ###########################################################################
+    lines,columns = np.indices((l1c_file.RasterYSize,l1c_file.RasterXSize))
+    easting = ulx + columns*pixel_size
+    northing = uly - lines*pixel_size
+
+    longitude,latitude = utm2dd(easting,northing,zone,direction)
+    solar_az = solar.get_azimuth(latitude,longitude,start_time)
+    solar_zn = 90-solar.get_altitude(latitude,longitude,start_time)
+    solar_az[mask] = -9999
+    solar_zn[mask] = -9999
+
+    #Create elevation raster
+    elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
+    elevation[mask] = -9999
+    longitude[mask] = -9999
+    latitude[mask] = -9999
+
+    loc_header = envi_header_dict()
+    loc_header['lines']= l1c_file.RasterYSize
+    loc_header['samples']= l1c_file.RasterXSize
+    loc_header['data ignore value'] = -9999
+    loc_header['bands']= 3
+    loc_header['interleave']= 'bil'
+    loc_header['data type'] = 4
+    loc_header['band_names'] = ['Longitude', 'Latitude','Elevation']
+    loc_header['byte order'] = 0
+    loc_header['map info'] = map_info
+
+    writer = WriteENVI(loc_file,loc_header)
+    writer.write_band(longitude,0)
+    writer.write_band(latitude,1)
+    writer.write_band(elevation,2)
+
+    # Observables datacube
+    ###########################################################################
+    # Calculate sensor geometry
+    sensor_az = np.ones(easting.shape)*float(specific.findall('sceneAzimuthAngle')[0].text)
+    sensor_zn = np.ones(easting.shape)*float(specific.findall('sceneIncidenceAngle')[0].text)
+    sensor_az[mask] = -9999
+    sensor_zn[mask] = -9999
+
+    # Generate remaining observable layers
+    slope,aspect = slope_aspect(elevation,temp_dir)
+    cosine_i = calc_cosine_i(np.radians(solar_zn),
+                             np.radians(solar_az),
+                             np.radians(slope),
+                             np.radians(aspect))
+    rel_az = np.radians(solar_az-sensor_az)
+    phase =  np.arccos(np.cos(np.radians(solar_zn)))*np.cos(np.radians(solar_zn))
+    phase += np.sin(np.radians(solar_zn))*np.sin(np.radians(solar_zn))*np.cos(rel_az)
+
+    utc_time = ((end_time-start_time).seconds)/60/60
+    utc_time+= start_time.hour + start_time.minute/60
+    utc_time*= np.ones(easting.shape)
+
+    cosine_i[mask] = -9999
+    rel_az[mask] = -9999
+    phase[mask] = -9999
+    utc_time[mask] = -9999
+    #Not exact.....
+    pathlength = altitude_m-elevation
+    pathlength[mask] = -9999
+
+    obs_header = envi_header_dict()
+    obs_header['lines']= l1c_file.RasterYSize
+    obs_header['samples']= l1c_file.RasterXSize
+    obs_header['data ignore value'] = -9999
+    obs_header['bands']= 10
+    obs_header['interleave']= 'bil'
+    obs_header['data type'] = 4
+    obs_header['byte order'] = 0
+    obs_header['band_names'] = ['path length', 'to-sensor azimuth',
+                                'to-sensor zenith','to-sun azimuth',
+                                  'to-sun zenith','phase', 'slope',
+                                  'aspect', 'cosine i','UTC time']
+    obs_header['map info'] = map_info
+
+    writer = WriteENVI(obs_file,obs_header)
+    writer.write_band(pathlength,0)
+    writer.write_band(sensor_az,1)
+    writer.write_band(sensor_zn,2)
+    writer.write_band(solar_az,3)
+    writer.write_band(solar_zn,4)
+    writer.write_band(phase,5)
+    writer.write_band(slope,6)
+    writer.write_band(aspect,7)
+    writer.write_band(cosine_i,8)
+    writer.write_band(utc_time,9)
+
     logging.info('Deleting temporary files')
     shutil.rmtree(temp_dir)
