@@ -66,6 +66,30 @@ def create_loc_ort(loc_file,glt_file):
     writer.write_band(elv_proj,2)
     writer.close()
 
+
+def time_correct(obs_ort_file):
+    obs = ht.HyTools()
+    obs.read_file(obs_ort_file,'envi')
+
+    utc_time = obs.get_band(9)[obs.mask['no_data']]
+    if (utc_time.max() > 24) | (utc_time.min() < 0):
+        hour = np.ones((obs.lines,obs.columns))
+        hour += int(obs.base_name[12:14])
+        hour += int(obs.base_name[14:16])/60
+        hour += int(obs.base_name[16:18])/3600
+        hour[~obs.mask['no_data']] = obs.no_data
+
+        obs.load_data(mode = 'r+')
+
+        if obs.interleave == 'bip':
+            obs.data[:,:,9] =hour
+        elif obs.interleave == 'bil':
+            obs.data[:,9,:] =hour
+        elif obs.interleave == 'bsq':
+            obs.data[9,:,:] =hour
+
+        obs.close_data()
+
 def preprocess(input_tar,out_dir,temp_dir,res = 0):
     '''
     input_tar = '/data2/avcl/raw/f080709t01p00r15.tar.gz'
@@ -101,6 +125,7 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
         loc_file = [x for x in tar_contents if x.endswith('loc')][0]
         glt_file = [x for x in tar_contents if x.endswith('glt')][0]
         create_loc_ort(loc_file,glt_file)
+        time_correct(obs_ort_file)
 
     #AVIRIS Classic
     elif base_name.startswith('f'):
