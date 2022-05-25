@@ -68,9 +68,9 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     temp_dir(str): Temporary directory for intermediate
     elev_dir (str): Directory zipped Copernicus elevation tiles or url to AWS Copernicus data
                     ex : 'https://copernicus-dem-30m.s3.amazonaws.com/'
-    shift (str) : Filepath or URL of wavelength shift correction surface file
-    rad_coeff (str) : Filepath or URL of wavelength radiometric correction coefficients file
-    match (bool) : Perform landsat image matching
+    shift (bool) : Apply wavelength shift correction surface file
+    rad_coeff (bool) : Apply radiometric correction coefficients file
+    match (bool or string) : Perform landsat image matching, if string path to reference file
     proj (bool) : Project image to UTM grid
     res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)
     '''
@@ -78,7 +78,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     base_name = os.path.basename(l1_zip)[16:-4]
     out_dir = "%s/PRS_%s/" % (out_dir,base_name)
 
-    if not os.path.isdir(out_dir ):
+    if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
 
     logging.basicConfig(filename='%s/PRS_%s.log' % (out_dir,base_name),
@@ -359,9 +359,16 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         warp_band = project.project_band(unwarp_band,-9999)
         warp_band = 16000*(warp_band-warp_band.min())/warp_band.max()
 
-        landsat,land_east,land_north = get_landsat_image(longitude,latitude,
-                                                         mean_time.month,
-                                                         max_cloud = 5)
+        if isinstance(match,bool):
+            landsat,land_east,land_north = get_landsat_image(longitude,latitude,
+                                                             mean_time.month,
+                                                             max_cloud = 5)
+        else:
+            lst = ht.HyTools()
+            lst.read_file(match,'envi')
+            landsat = lst.get_band(0)
+            land_east = float(lst.map_info[3])
+            land_north = float(lst.map_info[4])
 
         #Calculate offsets between reference and input images
         offset_x = int((warp_east-land_east)//pixel_size)
