@@ -86,7 +86,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             datefmt='%Y-%m-%d %H:%M:%S',
             level=logging.NOTSET)
 
-    temp_dir = '%s/PRS_%s/'% (temp_dir,base_name)
+    temp_dir = '%s/tmpPRS_%s/'% (temp_dir,base_name)
     if not os.path.isdir(temp_dir):
         os.mkdir(temp_dir)
 
