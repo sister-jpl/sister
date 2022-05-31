@@ -337,7 +337,7 @@ def pairwise(iterable):
     next(b, None)
     return zip(a, b)
 
-def get_landsat_image(longitude,latitude,month,max_cloud = 5,band=5,project = True):
+def get_landsat_image(longitude,latitude,month,max_cloud = 5,band=5,project = True,month_window = 1):
     '''Given a set of coordinates and a month this function uses
     Google Earth Engine to generate a landsat scene using scenes from
     +/- 1 month of the input month
@@ -361,7 +361,10 @@ def get_landsat_image(longitude,latitude,month,max_cloud = 5,band=5,project = Tr
     #Retrieve Landsat 8 collection and average
     landsat8 = ee.ImageCollection("LANDSAT/LC08/C01/T1")
     landsat8_bounds = landsat8.filterBounds(bounds)
-    landsat8_month = landsat8_bounds.filter(ee.Filter.calendarRange(month-1,month+1,'month'))
+    month_min = max(month-month_window,1)
+    month_max = min(month+month_window,12)
+
+    landsat8_month = landsat8_bounds.filter(ee.Filter.calendarRange(month_min,month_max,'month'))
     landsat8_cloud = landsat8_month.filterMetadata('CLOUD_COVER','less_than',max_cloud).sort('CLOUDY_PIXEL_PERCENTAGE')
     landsat_mean = landsat8_cloud.select('B%s' % band).mean()
     latlon = ee.Image.pixelLonLat().addBands(landsat_mean)
