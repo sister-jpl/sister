@@ -73,7 +73,7 @@ def main():
         prisma.he5_to_envi(args.input,args.out_dir,args.temp_dir,
                            aws_cop_url,
                            shift = True,
-                           rad_coeff = True,
+                           rad_coeff = 'full',
                            proj = True)
 
     elif base_name.startswith('ang') or base_name.startswith('f'):
