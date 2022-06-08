@@ -42,7 +42,7 @@ from .. import data
 
 home = os.path.expanduser("~")
 
-def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = False,
+def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = None,
                 match=False,proj = False,res = 30):
     '''
     This function exports three files:
@@ -103,9 +103,22 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         shift_surface = shift_obj['shifts']
         #interp_kind = shift_obj['interp_kind']
         interp_kind='quadratic'
-    if rad_coeff:
+
+    coeff_arr = np.ones((996, 230))
+
+    if rad_coeff != None:
         coeff_file = importlib.resources.open_binary(data,"PRS_20210409105743_20210409105748_0001_radcoeff_surface.npz")
         coeff_obj = np.load(coeff_file)
+
+        if rad_coeff == 'full':
+            coeff_arr = coeff_obj['coeffs']
+        elif rad_coeff == 'mean':
+            coeff_arr[:] = coeff_obj['coeffs'].mean(axis=0)
+        elif rad_coeff == 'center':
+            coeff_arr[:] = coeff_obj['coeffs'][498-25:498+25].mean(axis=0)
+        else:
+            print('Unrecognized coeff type')
+
 
     #Define output paths
     if proj:
@@ -205,8 +218,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             else:
                 line = np.concatenate([chunk_v,chunk_s],axis=1)[2:-2,:]/1000.
 
-            if rad_coeff:
-                line*=coeff_obj['coeffs'][iterator_v.current_line-2,:]
+            #Apply rad coeffs
+            line*=coeff_arr[iterator_v.current_line-2,:]
 
             writer.write_line(line, iterator_v.current_line-2)
 
