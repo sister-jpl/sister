@@ -31,7 +31,7 @@ def loc_export(loc_file,longitude,latitude,elevation):
     loc_header['bands']= 3
     loc_header['interleave']= 'bil'
     loc_header['data type'] = 4
-    loc_header['band_names'] = ['Longitude', 'Latitude','Elevation']
+    loc_header['band names'] = ['Longitude', 'Latitude','Elevation']
     loc_header['byte order'] = 0
 
     writer = WriteENVI(loc_file,loc_header)
@@ -50,7 +50,7 @@ def obs_export(obs_file,pathlength,sensor_az,sensor_zn,solar_az,solar_zn,phase,s
     obs_header['interleave']= 'bil'
     obs_header['data type'] = 4
     obs_header['byte order'] = 0
-    obs_header['band_names'] = ['path length', 'to-sensor azimuth',
+    obs_header['band names'] = ['path length', 'to-sensor azimuth',
                                 'to-sensor zenith','to-sun azimuth',
                                   'to-sun zenith','phase', 'slope',
                                   'aspect', 'cosine i','UTC time']
@@ -66,13 +66,3 @@ def obs_export(obs_file,pathlength,sensor_az,sensor_zn,solar_az,solar_zn,phase,s
     writer.write_band(aspect,7)
     writer.write_band(cosine_i,8)
     writer.write_band(utc_time,9)
-
-
-
-
-
-
-
-
-
-
