@@ -31,7 +31,7 @@ def loc_export(loc_file,longitude,latitude,elevation):
     loc_header['bands']= 3
     loc_header['interleave']= 'bil'
     loc_header['data type'] = 4
-    loc_header['band names'] = ['Longitude', 'Latitude','Elevation']
+    loc_header['band names'] = ['longitude', 'latitude','elevation']
     loc_header['byte order'] = 0
 
     writer = WriteENVI(loc_file,loc_header)
