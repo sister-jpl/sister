@@ -38,11 +38,10 @@ from ..utils.terrain import *
 from ..utils.geometry import *
 from ..utils.ancillary import *
 from ..utils.misc import download_file
-from .. import data
 
 home = os.path.expanduser("~")
 
-def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = None,
+def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = False,
                 match=False,proj = False,res = 30):
     '''
     This function exports three files:
@@ -96,29 +95,24 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = None
         zipped.extractall(temp_dir)
 
     l1_obj = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
+    version = l1_obj.attrs['Processor_Version'].decode('UTF-8')
 
     if shift:
-        shift_file = importlib.resources.open_binary(data,"PRS_20210409105743_20210409105748_0001_wavelength_shift_surface.npz")
-        shift_obj = np.load(shift_file)
+        shift_obj = np.load(shift)
         shift_surface = shift_obj['shifts']
-        #interp_kind = shift_obj['interp_kind']
-        interp_kind='quadratic'
+        interp_kind = str(shift_obj['interp_kind'])
+        shift_processor = str(shift_obj['processor'])
+        if version != shift_processor:
+            print('Smile: Processor versions do not match.')
 
     coeff_arr = np.ones((996, 230))
 
-    if rad_coeff != None:
-        coeff_file = importlib.resources.open_binary(data,"PRS_20210409105743_20210409105748_0001_radcoeff_surface.npz")
-        coeff_obj = np.load(coeff_file)
-
-        if rad_coeff == 'full':
-            coeff_arr = coeff_obj['coeffs']
-        elif rad_coeff == 'mean':
-            coeff_arr[:] = coeff_obj['coeffs'].mean(axis=0)
-        elif rad_coeff == 'center':
-            coeff_arr[:] = coeff_obj['coeffs'][498-25:498+25].mean(axis=0)
-        else:
-            print('Unrecognized coeff type')
-
+    if rad_coeff:
+        coeff_obj = np.load(rad_coeff)
+        coeff_arr = coeff_obj['coeffs']
+        rad_processor = str(coeff_obj['processor'])
+        if version != rad_processor:
+            print('Rad coefficients: Processor versions do not match.')
 
     #Define output paths
     if proj:
@@ -139,6 +133,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = None
     vnir_fwhm = l1_obj.attrs.get('List_Fwhm_Vnir')
 
     rdn_dict = envi_header_dict ()
+    rdn_dict['description'] = "PRISMA Radiance v%s micro-watts/cm^2/nm/sr" % version
     rdn_dict['lines']= vnir_data.shape[0]
     rdn_dict['samples']= vnir_data.shape[2]
     rdn_dict['bands']=  vnir_data.shape[1]
@@ -207,10 +202,12 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = None
         if (iterator_v.current_line >=2) and (iterator_v.current_line <= 997):
             if (measurement == 'rdn') & shift:
                 vnir_interpolator = interp1d(vnir_waves+shift_surface[iterator_v.current_line-2,:63],
-                                               chunk_v[2:-2,:],fill_value = "extrapolate",kind=interp_kind)
+                                               chunk_v[2:-2,:],fill_value = "extrapolate",
+                                               kind=interp_kind)
                 chunk_v = vnir_interpolator(vnir_waves)
                 swir_interpolator = interp1d(swir_waves+shift_surface[iterator_v.current_line-2,63:],
-                                               chunk_s[2:-2,:],fill_value = "extrapolate",kind=interp_kind)
+                                               chunk_s[2:-2,:],fill_value = "extrapolate",
+                                               kind=interp_kind)
                 chunk_s = swir_interpolator(swir_waves)
 
                 line = np.concatenate([chunk_v,chunk_s],axis=1)/1000.
