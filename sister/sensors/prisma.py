@@ -97,7 +97,10 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     l1_obj = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
     version = l1_obj.attrs['Processor_Version'].decode('UTF-8')
 
+    apply_shift = False
     if shift:
+        apply_shift = True
+
         shift_obj = np.load(shift)
         shift_surface = shift_obj['shifts']
         interp_kind = str(shift_obj['interp_kind'])
@@ -105,9 +108,9 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         if version != shift_processor:
             print('Smile: Processor versions do not match.')
 
-    coeff_arr = np.ones((996, 230))
-
+    apply_coeff = False
     if rad_coeff:
+        apply_coeff = True
         coeff_obj = np.load(rad_coeff)
         coeff_arr = coeff_obj['coeffs']
         rad_processor = str(coeff_obj['processor'])
@@ -200,7 +203,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         chunk_s =np.flip(chunk_s,axis=1)
 
         if (iterator_v.current_line >=2) and (iterator_v.current_line <= 997):
-            if (measurement == 'rdn') & shift:
+            if (measurement == 'rdn') & apply_shift:
                 vnir_interpolator = interp1d(vnir_waves+shift_surface[iterator_v.current_line-2,:63],
                                                chunk_v[2:-2,:],fill_value = "extrapolate",
                                                kind=interp_kind)
@@ -216,7 +219,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
                 line = np.concatenate([chunk_v,chunk_s],axis=1)[2:-2,:]/1000.
 
             #Apply rad coeffs
-            line*=coeff_arr[iterator_v.current_line-2,:]
+            if apply_coeff:
+                line*=coeff_arr[iterator_v.current_line-2,:]
 
             writer.write_line(line, iterator_v.current_line-2)
 
