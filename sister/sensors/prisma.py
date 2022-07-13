@@ -185,8 +185,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     rdn_dict ['data type'] = 4
     rdn_dict ['wavelength units'] = "nanometers"
     rdn_dict ['byte order'] = 0
-    rdn_dict ['default bands'] = [int(vnir_obj.wave_to_band(1660)),
-                                  int(vnir_obj.wave_to_band(850)),
+    rdn_dict ['default bands'] = [int(vnir_obj.wave_to_band(850)),
+                                  int(vnir_obj.wave_to_band(660)),
                                   int(vnir_obj.wave_to_band(560))]
 
     writer = WriteENVI(rdn_file,rdn_dict)
