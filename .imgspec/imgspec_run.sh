@@ -9,13 +9,13 @@ mkdir output temp
 shopt -s extglob
 input_file=./input/!(*landsat*)
 
+echo $input_file
 base=$(basename $input_file)
 
-if [[ $input_file == PRS* ]]; then
+if [[ $base == PRS* ]]; then
     #Uncompress landsat reference image
     lst_archive=$(ls input/*landsat.tar.gz)
     tar -xzvf $lst_archive -C input/
-
     landsat=$(ls input/*landsat)
     rdn_coeffs=${pge_dir}/data/prisma/*_radcoeff_surface.npz
     smile=${pge_dir}/data/prisma/*_wavelength_shift_surface_smooth.npz
