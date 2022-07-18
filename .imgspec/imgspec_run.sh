@@ -4,11 +4,21 @@ imgspec_dir=$(cd "$(dirname "$0")" ; pwd -P)
 pge_dir=$(dirname ${imgspec_dir})
 
 source activate sister
-
 mkdir output temp
-input_file=$(ls input/*.*)
 
-python ${pge_dir}/scripts/l1_preprocess.py $input_file output/ temp/ $1
+shopt -s extglob
+input_file=./input/!(*landsat*)
+
+base=$(basename $input_file)
+
+if [[ $input_file == PRS* ]]; then
+    landsat==$(ls input/*landsat)
+    rdn_coeffs=${pge_dir}/data/prisma/*_radcoeff_surface.npz
+    smile=${pge_dir}/data/prisma/*_wavelength_shift_surface_smooth.npz
+    python ${pge_dir}/scripts/l1_preprocess.py $input_file output/ temp/ $1 $smile $rdn_coeffs
+else
+    python ${pge_dir}/scripts/l1_preprocess.py $input_file output/ temp/ $1
+fi
 
 cd output
 out_dir=$(ls ./)
