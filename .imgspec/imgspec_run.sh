@@ -12,7 +12,11 @@ input_file=./input/!(*landsat*)
 base=$(basename $input_file)
 
 if [[ $input_file == PRS* ]]; then
-    landsat==$(ls input/*landsat)
+    #Uncompress landsat reference image
+    lst_archive=$(ls input/*landsat.tar.gz)
+    tar -xzvf $lst_archive -C input/
+
+    landsat=$(ls input/*landsat)
     rdn_coeffs=${pge_dir}/data/prisma/*_radcoeff_surface.npz
     smile=${pge_dir}/data/prisma/*_wavelength_shift_surface_smooth.npz
     python ${pge_dir}/scripts/l1_preprocess.py $input_file output/ temp/ $1 $smile $rdn_coeffs
