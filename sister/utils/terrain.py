@@ -100,19 +100,20 @@ def dem_generate(longitude,latitude,elev_dir,temp_dir):
 
     ulx = float(dem_obj.map_info[3])
     uly = float(dem_obj.map_info[4])
-    pix = float(dem_obj.map_info[5])
+    pix_x = float(dem_obj.map_info[5])
+    pix_y = float(dem_obj.map_info[6])
 
     dem_lat,dem_lon = np.indices((dem_obj.lines,dem_obj.columns))
 
-    dem_xl = int((lon_min-ulx)//pix)
-    dem_xr = int((lon_max-ulx)//pix)
-    dem_yu = int((uly-lat_max)//pix)
-    dem_yd = int((uly-lat_min)//pix)
+    dem_xl = int((lon_min-ulx)//pix_x)
+    dem_xr = int((lon_max-ulx)//pix_x)
+    dem_yu = int((uly-lat_max)//pix_y)
+    dem_yd = int((uly-lat_min)//pix_y)
 
     dem_subset = dem_obj.get_chunk(dem_xl,dem_xr,dem_yu,dem_yd)
     dem_lat,dem_lon = np.indices(dem_subset.shape[:2])
-    dem_lat = (lat_max- dem_lat*pix).flatten()
-    dem_lon = (lon_min+ dem_lon*pix).flatten()
+    dem_lat = (lat_max- dem_lat*pix_y).flatten()
+    dem_lon = (lon_min+ dem_lon*pix_x).flatten()
 
     #Create spatial index and nearest neighbor sample
     src_points =np.concatenate([np.expand_dims(dem_lon,axis=1),
