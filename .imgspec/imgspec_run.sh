@@ -19,7 +19,7 @@ if [[ $base == PRS* ]]; then
     landsat=$(ls input/*landsat)
     rdn_coeffs=${pge_dir}/data/prisma/*_radcoeff_surface.npz
     smile=${pge_dir}/data/prisma/*_wavelength_shift_surface_smooth.npz
-    python ${pge_dir}/scripts/l1_preprocess.py $input_file output/ temp/ $1 $smile $rdn_coeffs
+    python ${pge_dir}/scripts/l1_preprocess.py $input_file output/ temp/ $1 $smile $rdn_coeffs $landsat
 else
     python ${pge_dir}/scripts/l1_preprocess.py $input_file output/ temp/ $1
 fi

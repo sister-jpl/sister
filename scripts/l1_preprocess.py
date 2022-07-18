@@ -31,6 +31,7 @@ def main():
     parser.add_argument('resolution',help="Output resample resolution",type=int, default = 0)
     parser.add_argument('smile',help="Path to smile wavelengths", default = False)
     parser.add_argument('rad_coeff',help="Path to radiometric coeffs",default = False)
+    parser.add_argument('landsat',help="Landsat reference file",default = False)
 
     args = parser.parse_args()
     base_name = os.path.basename(args.input)
@@ -39,9 +40,10 @@ def main():
     if base_name.startswith('PRS'):
         prisma.he5_to_envi(args.input,args.out_dir,args.temp_dir,
                            aws_cop_url,
-                           shift = parser.smile,
-                           rad_coeff =parser.rad_coeff,
-                           proj = True)
+                           shift = args.smile,
+                           rad_coeff =args.rad_coeff,
+                           proj = True
+                           match=args.landsat)
     elif base_name.startswith('ang') or base_name.startswith('f'):
         aviris.preprocess(args.input,args.out_dir,args.temp_dir,
                           res = args.resolution)
