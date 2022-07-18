@@ -42,7 +42,7 @@ def main():
                            aws_cop_url,
                            shift = args.smile,
                            rad_coeff =args.rad_coeff,
-                           proj = True
+                           proj = True,
                            match=args.landsat)
     elif base_name.startswith('ang') or base_name.startswith('f'):
         aviris.preprocess(args.input,args.out_dir,args.temp_dir,
