@@ -64,6 +64,7 @@ for l1_zip in glob.glob('%s*L1*.zip' % zip_dir):
     rgb =(rgb*255).astype(np.uint8)
 
     print(base_name)
+    print(l1_obj.attrs['Processor_Version'])
     plt.imshow(rgb)
     plt.show()
     plt.close()
@@ -72,5 +73,3 @@ for l1_zip in glob.glob('%s*L1*.zip' % zip_dir):
     im.save(image_file)
 
     os.remove(l1)
-
-
