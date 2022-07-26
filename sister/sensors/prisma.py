@@ -115,9 +115,9 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         apply_coeff = True
         coeff_obj = np.load(rad_coeff)
         if version == '3.9-2':
-            coeff_arr = shift_obj['coeffs_v2']
+            coeff_arr = coeff_obj['coeffs_v2']
         elif version == '3.9-3':
-            coeff_arr = shift_obj['coeffs_v3']
+            coeff_arr = coeff_obj['coeffs_v3']
         else:
             print('Rad coefficients: Processor versions not found.')
 
