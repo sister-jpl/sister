@@ -102,20 +102,24 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         apply_shift = True
 
         shift_obj = np.load(shift)
-        shift_surface = shift_obj['shifts']
         interp_kind = str(shift_obj['interp_kind'])
-        shift_processor = str(shift_obj['processor'])
-        if version != shift_processor:
-            print('Smile: Processor versions do not match.')
+        if version == '3.9-2':
+            shift_surface = shift_obj['shifts_v2']
+        elif version == '3.9-3':
+            shift_surface = shift_obj['shifts_v3']
+        else:
+            print('Smile: Processor versions not found.')
 
     apply_coeff = False
     if rad_coeff:
         apply_coeff = True
         coeff_obj = np.load(rad_coeff)
-        coeff_arr = coeff_obj['coeffs']
-        rad_processor = str(coeff_obj['processor'])
-        if version != rad_processor:
-            print('Rad coefficients: Processor versions do not match.')
+        if version == '3.9-2':
+            coeff_arr = shift_obj['coeffs_v2']
+        elif version == '3.9-3':
+            coeff_arr = shift_obj['coeffs_v3']
+        else:
+            print('Rad coefficients: Processor versions not found.')
 
     #Define output paths
     if proj:
