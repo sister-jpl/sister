@@ -29,9 +29,9 @@ def main():
     parser.add_argument('out_dir',help="Output directory", type = str)
     parser.add_argument('temp_dir',help="Temporary directory", type = str)
     parser.add_argument('resolution',help="Output resample resolution",type=int, default = 0)
-    parser.add_argument('smile',help="Path to smile wavelengths", default = False)
-    parser.add_argument('rad_coeff',help="Path to radiometric coeffs",default = False)
-    parser.add_argument('landsat',help="Landsat reference file",default = False)
+    parser.add_argument('smile', nargs='?',help="Path to smile wavelengths", default = False)
+    parser.add_argument('rad_coeff', nargs='?',help="Path to radiometric coeffs",default = False)
+    parser.add_argument('landsat', nargs='?',help="Landsat reference file",default = False)
 
     args = parser.parse_args()
     base_name = os.path.basename(args.input)
