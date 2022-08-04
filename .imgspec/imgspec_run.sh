@@ -6,6 +6,7 @@ pge_dir=$(dirname ${imgspec_dir})
 source activate sister
 mkdir output temp
 
+input_file=input/*.*
 echo $input_file
 base=$(basename $input_file)
 
@@ -17,7 +18,7 @@ if [[ $base == PRS* ]]; then
 
     cd input
     aws s3 cp $landsat_url .
-    cd $imgspec_dir
+    cd ..
 
     lst_archive=$(ls input/*landsat.tar.gz)
     tar -xzvf $lst_archive -C input/
