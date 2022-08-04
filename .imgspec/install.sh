@@ -6,6 +6,7 @@ pge_dir=$(dirname ${imgspec_dir})
 conda create -y --name sister python=3.8
 source activate sister
 conda install -y gdal
+conda install -y -c conda-forge awscli
 
 cd $pge_dir
 pip install .
