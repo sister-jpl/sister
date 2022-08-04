@@ -109,7 +109,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             shift_surface = shift_obj['shifts_v3']
         else
             print('Smile: Processor version not found.')
-            shift_surface = np.zeros((996, 230))
+            apply_shift = False
 
     apply_coeff = False
     if rad_coeff:
@@ -121,7 +121,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             coeff_arr = coeff_obj['coeffs_v3']
         else:
             print('Rad coefficients: Processor version not found.')
-            coeff_arr = np.ones((996, 230))
+            apply_coeff = False
 
 
     #Define output paths
