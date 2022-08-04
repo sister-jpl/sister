@@ -15,10 +15,7 @@ if [[ $base == PRS* ]]; then
     #Create landsat url
     landsat_url=s3://sister-ops-workspace/prisma/landsat_reference/PRS_${timestamp}_landsat.tar.gz
     echo $landsat_url
-
-    cd input
-    aws s3 cp $landsat_url .
-    cd ..
+    aws s3 cp $landsat_url ./input
 
     lst_archive=$(ls input/*landsat.tar.gz)
     tar -xzvf $lst_archive -C input/
