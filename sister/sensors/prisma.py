@@ -107,7 +107,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             shift_surface = shift_obj['shifts_v2']
         elif version == '3.9-3':
             shift_surface = shift_obj['shifts_v3']
-        else
+        else:
             print('Smile: Processor version not found.')
             apply_shift = False
 
