@@ -534,6 +534,11 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     projection = pyproj.Proj(l1c_file.GetProjection())
     zone = int(projection.crs.utm_zone[:-1])
     direction =projection.crs.utm_zone[-1]
+    if direction =='S':
+        direction = 'South'
+    else:
+        direction = 'North'
+
     map_info = ['UTM', 1, 1, ulx, uly,pixel_size,
                            pixel_size,zone,direction,
                            'WGS-84' , 'units=Meters']
