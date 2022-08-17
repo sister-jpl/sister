@@ -11,11 +11,7 @@ echo $input_file
 base=$(basename $input_file)
 
 if [[ $base == PRS* ]]; then
-    timestamp=$(echo $base | cut -c17-50)
-    #Create landsat url
-    landsat_url=s3://sister-ops-workspace/prisma/landsat_reference/PRS_${timestamp}_landsat.tar.gz
-    echo $landsat_url
-    aws s3 cp $landsat_url ./input
+    aws s3 cp $2 ./input
     lst_archive=$(ls input/*landsat.tar.gz)
     tar -xzvf $lst_archive -C input/
     landsat=$(ls input/*landsat)
