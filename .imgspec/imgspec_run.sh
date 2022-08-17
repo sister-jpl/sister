@@ -11,6 +11,7 @@ echo $input_file
 base=$(basename $input_file)
 
 if [[ $base == PRS* ]]; then
+    echo $2
     aws s3 cp $2 ./input
     lst_archive=$(ls input/*landsat.tar.gz)
     tar -xzvf $lst_archive -C input/
