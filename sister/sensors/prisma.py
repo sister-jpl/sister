@@ -254,7 +254,17 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         return time.hour + time.minute/60. + time.second/3600.
 
     v_dhour = np.vectorize(dhour)
-    utc_time = v_dhour(np.array(geo['Time'][:]))
+    time_array = np.array(geo['Time'][:])
+
+    #Replace bad times
+    time_array[time_array <= 0] = np.nan
+    time_indices = np.arange(time_array.shape[0])
+    time_interper = interp1d(time_indices[~np.isnan(time_array)],
+                             time_array[~np.isnan(time_array)],
+                             fill_value='extrapolate')
+    time_array[time_indices[np.isnan(time_array)]] = time_interper(time_indices[np.isnan(time_array)])
+
+    utc_time = v_dhour(time_array)
     utc_time = np.ones(geo['Longitude_VNIR'][:,:].shape[0]) *utc_time[:,np.newaxis]
     utc_time = utc_time[2:-2,2:-2]
 
@@ -265,7 +275,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     '''
     mjd2000_epoch = dt.datetime(2000,1, 1,)
     mjd2000_epoch = mjd2000_epoch.replace(tzinfo=dt.timezone.utc)
-    mean_time = mjd2000_epoch + dt.timedelta(days=np.array(geo['Time'][:]).mean())
+    mean_time = mjd2000_epoch + dt.timedelta(days=time_array.mean())
 
     solar_az = solar.get_azimuth(geo['Latitude_VNIR'][:,:],geo['Longitude_VNIR'][:,:],mean_time)[2:-2,2:-2]
     solar_zn = 90-solar.get_altitude(geo['Latitude_VNIR'][:,:],geo['Longitude_VNIR'][:,:],mean_time)[2:-2,2:-2]
@@ -302,7 +312,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
 
     # Convert line MJD2000 to UTC
     grd_t = []
-    for day in geo['Time'][:].flatten():
+    for day in time_array:
         time = mjd2000_epoch + dt.timedelta(days=day)
         grd_t.append(time.hour*3600 + time.minute*60. + time.second)
     grd_t = np.array(grd_t)[:,np.newaxis]
