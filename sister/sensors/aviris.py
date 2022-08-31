@@ -24,6 +24,7 @@ import hytools as ht
 from hytools.io.envi import WriteENVI
 import numpy as np
 from ..utils.geometry import resample
+from .. import __version__
 
 
 
@@ -92,10 +93,10 @@ def time_correct(obs_ort_file):
 
 def preprocess(input_tar,out_dir,temp_dir,res = 0):
     '''
-    input_tar = '/data2/avcl/raw/f080709t01p00r15.tar.gz'
-    input_tar = '/data2/avng/rdn/ang20170901t195659.tar.gz'
-    out_dir ='/data1/temp/ang_pre/output/'
-    temp_dir ='/data1/temp/ang_pre/temp/'
+    input_tar = '/Users/achlus/data1/avcl/raw/f080709t01p00r15.tar.gz'
+    input_tar = '/Users/achlus/data1/avng/raw/ang20191027t204454.tar.gz'
+    out_dir ='/Users/achlus/data1/avcl/rdn/'
+    temp_dir ='/Users/achlus/data1/temp/'
 
     '''
 
@@ -108,11 +109,6 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
     else:
         raise ValueError('Unrecognized sensor')
 
-    out_dir = "%s/%s/" % (out_dir,base_name)
-
-    if not os.path.isdir(out_dir):
-        os.mkdir(out_dir)
-
     file = tarfile.open(input_tar)
     tar_contents = [temp_dir+c for c in file.getnames()]
     file.extractall(temp_dir)
@@ -120,16 +116,19 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
 
     #AVIRIS NG
     if base_name.startswith('ang'):
+        instrument = 'AVNG'
         obs_ort_file = [x for x in tar_contents if x.endswith('obs_ort')][0]
         rdn_file = [x for x in tar_contents if x.endswith('img')][0]
         loc_file = [x for x in tar_contents if x.endswith('loc')][0]
         glt_file = [x for x in tar_contents if x.endswith('glt')][0]
         create_loc_ort(loc_file,glt_file)
         time_correct(obs_ort_file)
+        datetime = base_name[3:].upper()
 
     #AVIRIS Classic
     elif base_name.startswith('f'):
-        obs_ort_file =  [x for x in tar_contents if x.endswith('obs_ort')][0]
+        instrument = 'AVCL'
+        obs_ort_file = [x for x in tar_contents if x.endswith('obs_ort')][0]
         rdn_file = [x for x in tar_contents if x.endswith('ort_img')][0]
         igm_file = [x for x in tar_contents if x.endswith('igm')][0]
         glt_file = [x for x in tar_contents if x.endswith('ort_glt')][0]
@@ -170,13 +169,44 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
 
         create_loc_ort(loc_file,glt_file)
 
+        #Get time from observables file
+        obs = ht.HyTools()
+        obs.read_file(obs_ort_file,'envi')
+        utm_time = obs.get_band(9)
+        start_time = utm_time[utm_time != obs.no_data].min()
+        hour = int(start_time)
+        minute = (start_time-hour)*60
+        second = int((minute - int(minute))*60)
+        minute = int(minute)
+
+        datetime = "20%sT%02d%02d%02d" % (base_name[1:7],hour,minute,second)
+
     loc_ort_file = loc_file+'_ort'
 
+    out_dir = "%s/%s_%s_L1B_RDN_%s/" % (out_dir,instrument,datetime,__version__)
+
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+
     for file in [obs_ort_file,rdn_file,loc_ort_file]:
-        if res==0:
-            shutil.move(file,out_dir)
-            shutil.move(file + '.hdr',out_dir)
+
+        if 'loc' in file:
+            product = 'LOC'
+        elif 'obs' in file:
+            product = 'OBS'
         else:
-            resample(file,out_dir,res)
+            product = 'RDN'
+
+        new_file = "%s/%s_%s_L1B_%s_%s" % (os.path.dirname(file),instrument,datetime,product,__version__)
+        new_file_hdr = new_file+ '.hdr'
+
+        os.rename(file,new_file)
+        os.rename(file+ '.hdr',new_file_hdr)
+
+        if res==0:
+            shutil.move(new_file,out_dir)
+            shutil.move(new_file_hdr,out_dir)
+        else:
+            resample(new_file,out_dir,res)
 
     shutil.rmtree(tar_contents[0])
