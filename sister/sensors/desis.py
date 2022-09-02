@@ -438,9 +438,6 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
      temp_dir(str): Temporary directory for intermediate
      elev_dir (str): Directory zipped Copernicus elevation tiles or url to AWS Copernicus data
                     ex : 'https://copernicus-dem-30m.s3.amazonaws.com/'
-     match (str or list) : Pathname to Landsat image for image re-registration (recommended)
-     proj (bool) : Project image to UTM grid
-     res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)
     '''
 
     base_name = os.path.basename(l1c_zip)[14:-4]
@@ -459,6 +456,8 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
         zipped.extractall(temp_dir)
 
     l1c_file = gdal.Open('%s/DESIS-HSI-L1C-%s-SPECTRAL_IMAGE.tif' % (temp_dir,base_name))
+    header_file = '%s/DESIS-HSI-L1C-%s-SPECTRAL_IMAGE.hdr' % (temp_dir,base_name)
+    header_dict = ht.io.envi.parse_envi_header(header_file)
 
     # Parse relevant metadata from XML file, assume metadata are in same directory as iamges
     tree = ET.parse('%s/DESIS-HSI-L1C-%s-METADATA.xml' % (temp_dir,base_name))
@@ -487,12 +486,12 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     response_waves = np.array(band_meta['wavelengths'])
 
     # Fit a gaussian to the reponse to determine center wavelength and fhwm
-    opt_waves = []
-    opt_fwhm = []
-    for i,wave in enumerate(waves):
-        popt, pcov = curve_fit(gaussian, response_waves[i],np.array(response[i])/max(response[i]),[waves[i],fwhm[i]])
-        opt_waves.append(popt[0])
-        opt_fwhm.append(popt[1])
+    # opt_waves = []
+    # opt_fwhm = []
+    # for i,wave in enumerate(waves):
+    #     popt, pcov = curve_fit(gaussian, response_waves[i],np.array(response[i])/max(response[i]),[waves[i],fwhm[i]])
+    #     opt_waves.append(popt[0])
+    #     opt_fwhm.append(popt[1])
 
     # Get acquisition start and end time
     base =  root[2]
@@ -520,8 +519,8 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     rad_dict['lines']= l1c_file.RasterYSize
     rad_dict['samples']= l1c_file.RasterXSize
     rad_dict['bands']= len(waves)-1
-    rad_dict['wavelength']= opt_waves[1:]
-    rad_dict['fwhm']= opt_fwhm[1:]
+    rad_dict['wavelength']= waves[1:]
+    rad_dict['fwhm']= fwhm[1:]
     rad_dict['interleave']= 'bil'
     rad_dict['data type'] = 4
     rad_dict['wavelength units'] = "nanometers"
