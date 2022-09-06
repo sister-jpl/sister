@@ -69,34 +69,32 @@ In addition to required MAAP job submission arguments the L1 preprocess PGE also
 
 The L1 preprocess PGE exports 3 ENVI formatted datacubes along with their associated header files. Output files follow the AVIRIS Next Generation formatting structure and include the following: 
 
-
 |Product name| Description |  Units |
-|---|---|---|---|
-| \*RDN\*| ENVI Radiance |μW/cm<sup>2</sup>/sr|
-| \*RDN\*.hdr| ENVI radiance header file  | - |
-| \*LOC\*| ENVI Location datacube |-|
-|| 1. WGS-84 longitude |decimal degrees|
-|| 2. WGS-84 latitude |decimal degrees|
-|| 3. Ground elevation |meters|
-| \*LOC\*.hdr| ENVI location header file  | - |
-| \*OBS\*| ENVI Observation datacube |-|
-|| 1. path length |meters|
-|| 2. to-sensor-azimuth |0 to 360 degrees clockwise from N|
-|| 3. to-sensor-zenith |0 to 90 degrees from zenith|
-|| 4. to-sun-azimuth |0 to 360 degrees clockwise from N|
-|| 5. to-sun-zenith |0 to 90 degrees from zenith|
-|| 6. solar phase |degrees between to-sensor and to-sun vectors in principal plane|
-|| 7. slope |decimal degrees|
-|| 8. aspect |0 to 360 degrees clockwise from N|
-|| 9. cosine i |unitless|
-|| 10. UTC time |decimal hours|
-|| 11. Earth-sun distance |astronomical unit|
-| \*OBS*.hdr| ENVI observable header file  | - |
+|---|---|---|
+| RDN| ENVI Radiance datacube |μW/cm<sup>2</sup>/sr|
+| RDN  .hdr| ENVI Radiance header file  | - |
+| LOC| ENVI Location datacube |-|
+| | 1. WGS-84 longitude |decimal degrees|
+| | 2. WGS-84 latitude |decimal degrees|
+| | 3. Ground elevation |meters|
+| LOC .hdr| ENVI Location header file  | - |
+| OBS| ENVI Observation datacube |-|
+| | 1. path length |meters|
+| | 2. to-sensor-azimuth |0 to 360 degrees clockwise from N|
+| | 3. to-sensor-zenith |0 to 90 degrees from zenith|
+| | 4. to-sun-azimuth |0 to 360 degrees clockwise from N|
+| | 5. to-sun-zenith |0 to 90 degrees from zenith|
+| | 6. solar phase |degrees between to-sensor and to-sun vectors in principal plane|
+| | 7. slope |decimal degrees|
+| | 8. aspect |0 to 360 degrees clockwise from N|
+| | 9. cosine i |unitless|
+| | 10. UTC time |decimal hours|
+| | 11. Earth-sun distance |astronomical unit|
+|OBS .hdr| ENVI Observation header file  | - |
 
 
 File and band descriptions taken directly from [AVIRIS NG Data Product Readme]
 (https://avirisng.jpl.nasa.gov/dataportal/ANG_L1B_L2_Data_Product_Readme_v02.txt)
-
 
 
 ## Examples
