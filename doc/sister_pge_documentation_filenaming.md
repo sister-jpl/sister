@@ -74,10 +74,10 @@ The outputs of the PGE use the following naming convention:
 	 	 
 | Subproduct code | Description | Example | 
 | ---|---|---|
-| RFL | Reflectance datacube | AVNG\_20220502T180901\_L1B\_RFL\_100 |
-| UNC | Uncertainty datacube | AVNG\_20220502T180901\_L1B\_UNC\_100 | 
-| STATE | State datacube | AVNG\_20220502T180901\_L1B\_STATE\_100 | 
-| SEG | Segment datacube | AVNG\_20220502T180901\_L1B\_SEG\_100 |
+| RFL | Reflectance datacube | AVNG\_20220502T180901\_L2A\_RFL\_100 |
+| UNC | Uncertainty datacube | AVNG\_20220502T180901\_L2A\_UNC\_100 | 
+| STATE | State datacube | AVNG\_20220502T180901\_L2A\_STATE\_100 | 
+| SEG | Segment datacube | AVNG\_20220502T180901\_L2A\_SEG\_100 |
 
 
 ## L2A Spectral resampling
@@ -95,12 +95,12 @@ The outputs of the PGE use the following naming convention:
 		
 | Subproduct code | Description |  Example | 
 | ---|---|---|
-| RSRFL | Resampled reflectance datacube | AVNG\_20220502T180901\_L1B\_RSRFL\_100 |
-| RSUNC | Resampled uncertainty datacube | AVNG\_20220502T180901\_L1B\_RSUNC\_100 |
+| RSRFL | Resampled reflectance datacube | AVNG\_20220502T180901\_L2A\_RSRFL\_100 |
+| RSUNC | Resampled uncertainty datacube | AVNG\_20220502T180901\_L2A\_RSUNC\_100 |
 
 
 ## L2A Reflectance correction
-All outputs of the L2 atmospheric correction are compressed into a single tar.gz file using the following naming structure:
+All outputs of the L2a reflectance correction are compressed into a single tar.gz file using the following naming structure:
  
  	 	INSTRUMENT_YYYYMMDDTHHMMSS_L2A_CORFL_VERSION.tar.gz
  	 	
