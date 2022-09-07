@@ -97,7 +97,6 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
     input_tar = '/Users/achlus/data1/avng/raw/ang20191027t204454.tar.gz'
     out_dir ='/Users/achlus/data1/avcl/rdn/'
     temp_dir ='/Users/achlus/data1/temp/'
-
     '''
 
     base_name = os.path.basename(input_tar)
@@ -183,7 +182,7 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
 
     loc_ort_file = loc_file+'_ort'
 
-    out_dir = "%s/%s_%s_L1B_RDN_%s/" % (out_dir,instrument,datetime,__version__)
+    out_dir = "%s/SISTER%s_%s_L1B_RDN_000/" % (out_dir,instrument,datetime)
 
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
@@ -197,7 +196,7 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
         else:
             product = 'RDN'
 
-        new_file = "%s/%s_%s_L1B_%s_%s" % (os.path.dirname(file),instrument,datetime,product,__version__)
+        new_file = "%s/SISTER_%s_%s_L1B_%s_000" % (os.path.dirname(file),instrument,datetime,product)
         new_file_hdr = new_file+ '.hdr'
 
         os.rename(file,new_file)
