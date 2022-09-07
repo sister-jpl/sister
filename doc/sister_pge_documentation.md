@@ -32,7 +32,7 @@ Input data for AVNG is a tar'ed and gzipped archived containing multiple ENVI fo
 
 File example:
 
-	ang20191027t204454.tar.gz
+		ang20191027t204454.tar.gz
 	
 Preprocessing of AVNG also includes optional spatial resampling. Spatial resampling is performed by aggregationg and averaging pixels to the closest resolution to the target resolution. For example, for a target pixel size of 30m and source pixel size of 5.6m, pixel will be averaged in 5x5 blocks of pixels for an output resolution of 28m.
 
@@ -44,7 +44,7 @@ DESIS L1C radiance data are provided by the German Space Agency (DLR) and Teledy
 
 Example file:
 
-	DESIS-HSI-L1C-DT0700655132_004-20220317T070333-V0215.zip
+		DESIS-HSI-L1C-DT0700655132_004-20220317T070333-V0215.zip
 			
 Provided band gains and offsets are using to convert radiance data to physical units of μW/cm<sup>2</sup>/sr. Per-pixel sensor geometry data is not provided, instead a scene mean value is included in the metadata, this value is assigned to all pixels in the image. Per-pixel solar geometry is calculated at the start time of image collection. An elevation dataset is not provided with DESIS imagery and is generated during runtime. Copernicus DEM tiles that overlap the DESIS image extent are downloaded from AWS servers (['https://copernicus-dem-30m.s3.amazonaws.com/']('https://copernicus-dem-30m.s3.amazonaws.com/')), mosiacked and clipped to the geographic extent of the input dataset.
 
@@ -56,7 +56,7 @@ PRISMA L1 radiance data are provided by the Italian Space Agency (ASI) as a zipp
 
 Example file:
 
-	PRS_L1_STD_OFFL_20210204092812_20210204092816_0001.zip
+		PRS_L1_STD_OFFL_20210204092812_20210204092816_0001.zip
 
 Prior to data export a series of correction routines are applied to the dataset to improve geometric registration and radiometry. First a smile correction is applied by resampling the radiance data using a precalculated wavelength center array, next a pseudo flat field correction is applied to the radiance data using a precalculated array of radiometric adjustment coefficients. Using the input Landsat image as a reference image pixel coordinates are then adjusted using an image matching algorithm. An elevation dataset is not provided with PRISMA imagery and is generated during runtime. Copernicus DEM tiles that overlap the PRISMA image extent are downloaded from AWS servers (['https://copernicus-dem-30m.s3.amazonaws.com/']('https://copernicus-dem-30m.s3.amazonaws.com/')), mosiacked and clipped to the geographic extent of the input dataset. Finally all datasets are projected in the appropriate WGS84 UTM zone at a spatial resolution of 30m.
 
@@ -77,18 +77,18 @@ In addition to required MAAP job submission arguments the L1 preprocess PGE also
 
 The L1B preprocess PGE exports 3 ENVI formatted datacubes along with their associated header files. The outputs of the PGE use the following naming convention:
 
-	INSTRUMENT_YYYYMMDDTHHMMSS_L1B_SUBPRODUCT_VERSION
+		SISTER_INSTRUMENT_YYYYMMDDTHHMMSS_L1B_SUBPRODUCT_CRID
 
 |Product name| Description |  Units | Example filename
 |---|---|---|---|
-| RDN| ENVI Radiance datacube |μW/cm<sup>2</sup>/sr|  AVNG\_20220502T180901\_L1B\_RDN\_001 |
-| RDN  .hdr| ENVI Radiance header file  | - | AVNG\_20220502T180901\_L1B\_RDN\_001.hdr|
-| LOC| ENVI Location datacube |-| AVNG\_20220502T180901\_L1B\_LOC\_100 |
+| RDN| ENVI Radiance datacube |μW/cm<sup>2</sup>/sr|   SISTER_AVNG\_20220502T180901\_L1B\_RDN\_001 |
+| RDN  .hdr| ENVI Radiance header file  | - |  SISTER_AVNG\_20220502T180901\_L1B\_RDN\_001.hdr|
+| LOC| ENVI Location datacube |-|  SISTER_AVNG\_20220502T180901\_L1B\_LOC\_001 |
 | | 1. WGS-84 longitude |decimal degrees|
 | | 2. WGS-84 latitude |decimal degrees|
 | | 3. Ground elevation |meters|
-| LOC .hdr| ENVI Location header file  | - | AVNG\_20220502T180901\_L1B\_RDN\_001.hdr |
-| OBS| ENVI Observation datacube |-| AVNG\_20220502T180901\_L1B\_OBS\_100 |
+| LOC .hdr| ENVI Location header file  | - |  SISTER_AVNG\_20220502T180901\_L1B\_RDN\_001.hdr |
+| OBS| ENVI Observation datacube |-|  SISTER_AVNG\_20220502T180901\_L1B\_OBS\_001 |
 | | 1. path length |meters|
 | | 2. to-sensor-azimuth |0 to 360 degrees clockwise N|
 | | 3. to-sensor-zenith |0 to 90 degrees from zenith|
@@ -100,26 +100,26 @@ The L1B preprocess PGE exports 3 ENVI formatted datacubes along with their assoc
 | | 9. cosine i |unitless|
 | | 10. UTC time |decimal hours|
 | | 11. Earth-sun distance |astronomical unit|
-|OBS .hdr| ENVI Observation header file  | - | AVNG\_20220502T180901\_L1B\_OBS\_100.hdr |
+|OBS .hdr| ENVI Observation header file  | - |  SISTER_AVNG\_20220502T180901\_L1B\_OBS\_001.hdr |
 
 File and band descriptions taken directly from [AVIRIS NG Data Product Readme]
 (https://avirisng.jpl.nasa.gov/dataportal/ANG_L1B_L2_Data_Product_Readme_v02.txt)
 
 All outputs of the L1 PGE processor are compressed into a single tar.gz file using the following naming structure:
 
-	INSTRUMENT_YYYYMMDDTHHMMSS_L1B_RDN_VERSION.tar.gz
+	 	SISTER_INSTRUMENT_YYYYMMDDTHHMMSS_L1B_RDN_CRID.tar.gz
 
 for example:
 
-	AVNG_20220502T180901_L1B_RDN_001.tar.gz
+	 	SISTER_AVNG_20220502T180901_L1B_RDN_001.tar.gz
 
 ## Examples
 
 ### PRISMA	
 	l1p_job_response = maap.submitJob(algo_id="sister-l1_preprocess",
 										    version="1.0.0",
-										    l1_granule= '../PRS_L1_STD_OFFL_20200917091806_20200917091810_0001.zip',
-										    landsat='.../PRS_20200917091806_20200917091810_0001_landsat.tar.gz',
+										    l1_granule= 'PRS_L1_STD_OFFL_20200917091806_20200917091810_0001.zip',
+										    landsat='PRS_20200917091806_20200917091810_0001_landsat.tar.gz',
 										    publish_to_cmr=False,
 										    cmr_metadata={},
 										    queue="sister-job_worker-32gb",
@@ -131,7 +131,7 @@ Landsat argument not required, will default to 'None'. Resolution argument ignor
  
  	l1p_job_response = maap.submitJob(algo_id="sister-l1_preprocess",
 										    version="1.0.0",
-										    l1_granule= '../ang20170827t175432.tar',
+										    l1_granule= 'ang20170827t175432.tar',
 										    resolution=30,
 										    publish_to_cmr=False,
 										    cmr_metadata={},
