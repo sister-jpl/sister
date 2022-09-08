@@ -24,8 +24,6 @@ import hytools as ht
 from hytools.io.envi import WriteENVI
 import numpy as np
 from ..utils.geometry import resample
-from .. import __version__
-
 
 
 def create_loc_ort(loc_file,glt_file):
