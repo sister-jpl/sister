@@ -186,18 +186,18 @@ def l1b_process(l1b_zip,out_dir,temp_dir,elev_dir,
     mask = raster[1].astype(float)
     mask = mask==mask[0][0]
 
-    rad_dict  = envi_header_dict()
-    rad_dict ['lines']= l1b_file.RasterYSize
-    rad_dict ['samples']= l1b_file.RasterXSize-85
-    rad_dict ['bands']= len(waves)-1
-    rad_dict ['wavelength']= opt_waves[1:]
-    rad_dict ['fwhm']= opt_fwhm[1:]
-    rad_dict ['interleave']= 'bil'
-    rad_dict ['data type'] = 4
-    rad_dict ['wavelength units'] = "nanometers"
-    rad_dict ['byte order'] = 0
-    rad_dict ['data ignore value'] = -9999
-    rad_dict ['default bands'] = [np.argmin(np.abs(waves-660)),
+    rad_header  = envi_header_dict()
+    rad_header ['lines']= l1b_file.RasterYSize
+    rad_header ['samples']= l1b_file.RasterXSize-85
+    rad_header ['bands']= len(waves)-1
+    rad_header ['wavelength']= opt_waves[1:]
+    rad_header ['fwhm']= opt_fwhm[1:]
+    rad_header ['interleave']= 'bil'
+    rad_header ['data type'] = 4
+    rad_header ['wavelength units'] = "nanometers"
+    rad_header ['byte order'] = 0
+    rad_header ['data ignore value'] = -9999
+    rad_header ['default bands'] = [np.argmin(np.abs(waves-660)),
                                   np.argmin(np.abs(waves-560)),
                                   np.argmin(np.abs(waves-460))]
 
@@ -211,7 +211,7 @@ def l1b_process(l1b_zip,out_dir,temp_dir,elev_dir,
         loc_file = '%sDESIS_%s_loc' % (out_dir,base_name)
         obs_file = '%sDESIS_%s_obs' % (out_dir,base_name)
 
-    writer = WriteENVI(rad_file,rad_dict )
+    writer = WriteENVI(rad_file,rad_header )
 
     #Write VNIR cube
     logging.info('Exporting radiance data')
@@ -446,7 +446,7 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
 
-    temp_dir = '%s/DESIS_%s/'% (temp_dir,base_name)
+    temp_dir = '%s/tmpDESIS_%s/'% (temp_dir,base_name)
     if not os.path.isdir(temp_dir):
         os.mkdir(temp_dir)
 
@@ -459,7 +459,7 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     header_file = '%s/DESIS-HSI-L1C-%s-SPECTRAL_IMAGE.hdr' % (temp_dir,base_name)
     header_dict = ht.io.envi.parse_envi_header(header_file)
 
-    # Parse relevant metadata from XML file, assume metadata are in same directory as iamges
+    # Parse relevant metadata from XML file, assume metadata are in same directory as images
     tree = ET.parse('%s/DESIS-HSI-L1C-%s-METADATA.xml' % (temp_dir,base_name))
     root = tree.getroot()
     specific =  root[3]
@@ -485,16 +485,23 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     response = np.array(band_meta['response'])
     response_waves = np.array(band_meta['wavelengths'])
 
-    # Fit a gaussian to the reponse to determine center wavelength and fhwm
-    # opt_waves = []
-    # opt_fwhm = []
-    # for i,wave in enumerate(waves):
-    #     popt, pcov = curve_fit(gaussian, response_waves[i],np.array(response[i])/max(response[i]),[waves[i],fwhm[i]])
-    #     opt_waves.append(popt[0])
-    #     opt_fwhm.append(popt[1])
+    base =  root[2]
+
+    #Get image bounding box
+    bbox_lat = []
+    bbox_lon = []
+    polygon = base.findall('spatialCoverage')[0].findall('boundingPolygon')[0]
+    for point in polygon:
+        name= point.findall('frame')[0].text
+        bbox_lat.append(float(point.findall('latitude')[0].text))
+        bbox_lon.append(float(point.findall('longitude')[0].text))
+
+    lat_min = min(bbox_lat)
+    lon_min = min(bbox_lon)
+    lat_max = max(bbox_lat)
+    lon_max = max(bbox_lon)
 
     # Get acquisition start and end time
-    base =  root[2]
     time_str = base.findall('temporalCoverage')[0].findall('startTime')[0].text
     time_str=time_str.replace('T',' ').replace('Z','')
     start_time = dt.datetime.strptime(time_str,"%Y-%m-%d %H:%M:%S.%f")
@@ -515,20 +522,31 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     mask = raster[1].astype(float)
     mask = mask==mask[0][0]
 
-    rad_dict  = envi_header_dict()
-    rad_dict['lines']= l1c_file.RasterYSize
-    rad_dict['samples']= l1c_file.RasterXSize
-    rad_dict['bands']= len(waves)-1
-    rad_dict['wavelength']= waves[1:]
-    rad_dict['fwhm']= fwhm[1:]
-    rad_dict['interleave']= 'bil'
-    rad_dict['data type'] = 4
-    rad_dict['wavelength units'] = "nanometers"
-    rad_dict['byte order'] = 0
-    rad_dict['data ignore value'] = -9999
-    rad_dict['default bands'] = [np.argmin(np.abs(waves-1660)),
-                                  np.argmin(np.abs(waves-850)),
+    rad_header  = envi_header_dict()
+    rad_header['description']= 'DESIS Radiance micro-watts/cm^2/nm/sr'
+    rad_header['lines']= l1c_file.RasterYSize
+    rad_header['samples']= l1c_file.RasterXSize
+    rad_header['bands']= len(waves)-1
+    rad_header['wavelength']= waves[1:]
+    rad_header['fwhm']= fwhm[1:]
+    rad_header['interleave']= 'bil'
+    rad_header['data type'] = 4
+    rad_header['wavelength units'] = "nanometers"
+    rad_header['byte order'] = 0
+    rad_header['data ignore value'] = -9999
+    rad_header['default bands'] = [np.argmin(np.abs(waves-850)),
+                                  np.argmin(np.abs(waves-660)),
                                   np.argmin(np.abs(waves-560))]
+    rad_header['start acquisition time'] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+    rad_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+    rad_header['latitude min'] =lat_min
+    rad_header['longitude min'] =lon_min
+    rad_header['longitude max'] =lat_max
+    rad_header['latitude max'] =lon_max
+    rad_header['sensor type'] ='DESIS'
+
+
+
     ulx,pixel_size,a,uly,b,c = l1c_file.GetGeoTransform()
     projection = pyproj.Proj(l1c_file.GetProjection())
     zone = int(projection.crs.utm_zone[:-1])
@@ -541,12 +559,12 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     map_info = ['UTM', 1, 1, ulx, uly,pixel_size,
                            pixel_size,zone,direction,
                            'WGS-84' , 'units=Meters']
-    rad_dict['map info'] = map_info
+    rad_header['map info'] = map_info
     rad_file = '%sDESIS_%s_rdn_prj' % (out_dir,base_name)
     loc_file = '%sDESIS_%s_loc_prj' % (out_dir,base_name)
     obs_file = '%sDESIS_%s_obs_prj' % (out_dir,base_name)
 
-    writer = WriteENVI(rad_file,rad_dict)
+    writer = WriteENVI(rad_file,rad_header)
 
     #Write VNIR cube
     logging.info('Exporting radiance data')
@@ -577,6 +595,7 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     latitude[mask] = -9999
 
     loc_header = envi_header_dict()
+    loc_header['description']= 'DESIS Location datacube'
     loc_header['lines']= l1c_file.RasterYSize
     loc_header['samples']= l1c_file.RasterXSize
     loc_header['data ignore value'] = -9999
@@ -586,6 +605,14 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     loc_header['band_names'] = ['Longitude', 'Latitude','Elevation']
     loc_header['byte order'] = 0
     loc_header['map info'] = map_info
+    loc_header['start acquisition time'] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+    loc_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+    loc_header['latitude min'] =lat_min
+    loc_header['longitude min'] =lon_min
+    loc_header['longitude max'] =lat_max
+    loc_header['latitude max'] =lon_max
+    loc_header['sensor type'] ='DESIS'
+
 
     writer = WriteENVI(loc_file,loc_header)
     writer.write_band(longitude,0)
@@ -623,6 +650,7 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     pathlength[mask] = -9999
 
     obs_header = envi_header_dict()
+    obs_header['description']= 'DESIS Observation datacube'
     obs_header['lines']= l1c_file.RasterYSize
     obs_header['samples']= l1c_file.RasterXSize
     obs_header['data ignore value'] = -9999
@@ -635,6 +663,13 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
                                   'to-sun zenith','phase', 'slope',
                                   'aspect', 'cosine i','UTC time']
     obs_header['map info'] = map_info
+    obs_header['start acquisition time'] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+    obs_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+    obs_header['latitude min'] =lat_min
+    obs_header['longitude min'] =lon_min
+    obs_header['longitude max'] =lat_max
+    obs_header['latitude max'] =lon_max
+    obs_header['sensor type'] ='DESIS'
 
     writer = WriteENVI(obs_file,obs_header)
     writer.write_band(pathlength,0)
