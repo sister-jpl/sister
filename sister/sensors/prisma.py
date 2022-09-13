@@ -185,7 +185,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     swir_obj.read_file(swir_temp, 'envi')
 
     rdn_dict  = envi_header_dict()
-    rdn_dict['description'] = "PRISMA Radiance v%s micro-watts/cm^2/nm/sr" % version
+    rdn_dict ['description'] = "PRISMA Radiance v%s micro-watts/cm^2/nm/sr" % version
     rdn_dict ['lines']= vnir_obj.lines-4 #Clip edges of array
     rdn_dict ['samples']=vnir_obj.columns-4  #Clip edges of array
     rdn_dict ['bands']= len(vnir_waves.tolist() + swir_waves.tolist())
@@ -442,6 +442,15 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
                solar_az,solar_zn,phase,slope,aspect,
                cosine_i,utc_time)
 
+
+    lon_min = longitude.min()
+    lat_min = latitude.min()
+    lon_max = longitude.max()
+    lat_max = latitude.max()
+
+    start_time = dt.datetime.strptime(base_name.split('_')[0],'%Y%m%d%H%M%S')
+    end_time = dt.datetime.strptime(base_name.split('_')[1],'%Y%m%d%H%M%S')
+
     if proj:
         #Create new projector with corrected coordinates
         new_coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
@@ -469,6 +478,14 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             out_header['samples']=project.output_shape[1]//blocksize
             out_header['data ignore value'] = -9999
             out_header['map info'] = map_info
+            out_header['start acquisition time'] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+            out_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+            out_header['latitude min'] =lat_min
+            out_header['longitude min'] =lon_min
+            out_header['longitude max'] =lat_max
+            out_header['latitude max'] =lon_max
+            out_header['sensor type'] ='PRISMA'
 
             output_name = '%sPRS_%s_%s_prj' % (out_dir,base_name,file)
             writer = WriteENVI(output_name,out_header)
