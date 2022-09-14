@@ -595,7 +595,7 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     latitude[mask] = -9999
 
     loc_header = envi_header_dict()
-    loc_header['description']= 'DESIS Location datacube'
+    loc_header['description']= 'Location datacube'
     loc_header['lines']= l1c_file.RasterYSize
     loc_header['samples']= l1c_file.RasterXSize
     loc_header['data ignore value'] = -9999
@@ -650,7 +650,7 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     pathlength[mask] = -9999
 
     obs_header = envi_header_dict()
-    obs_header['description']= 'DESIS Observation datacube'
+    obs_header['description']= 'Observation datacube'
     obs_header['lines']= l1c_file.RasterYSize
     obs_header['samples']= l1c_file.RasterXSize
     obs_header['data ignore value'] = -9999
