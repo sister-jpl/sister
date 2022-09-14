@@ -26,6 +26,7 @@ def loc_export(loc_file,longitude,latitude,elevation):
     '''Export location datasets to disk
     '''
     loc_header = envi_header_dict()
+    loc_header['desciption']= 'Location datacube'
     loc_header['lines']= longitude.shape[0]
     loc_header['samples']= longitude.shape[1]
     loc_header['bands']= 3
@@ -44,6 +45,7 @@ def obs_export(obs_file,pathlength,sensor_az,sensor_zn,solar_az,solar_zn,phase,s
     '''Export observables datasets to disk
     '''
     obs_header = envi_header_dict()
+    obs_header['description'] = 'Observation datacube'
     obs_header['lines']= pathlength.shape[0]
     obs_header['samples']= pathlength.shape[1]
     obs_header['bands']= 10
