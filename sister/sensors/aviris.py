@@ -21,6 +21,7 @@ import os
 import shutil
 import tarfile
 import hytools as ht
+import datetime as dt
 from hytools.io.envi import WriteENVI
 import numpy as np
 from ..utils.geometry import resample
@@ -65,7 +66,6 @@ def create_loc_ort(loc_file,glt_file):
     writer.write_band(elv_proj,2)
     writer.close()
 
-
 def time_correct(obs_ort_file):
     obs = ht.HyTools()
     obs.read_file(obs_ort_file,'envi')
@@ -89,20 +89,59 @@ def time_correct(obs_ort_file):
 
         obs.close_data()
 
+def get_spatiotemporal_extents(loc_file,obs_ort_file):
+    ''' Get image acquiition start and end time and bounding box of image
+    '''
+
+    loc = ht.HyTools()
+    loc.read_file(loc_file,'envi')
+
+    bounds = [loc.get_band(0).min(),
+             loc.get_band(0).max(),
+             loc.get_band(1).min(),
+             loc.get_band(1).max()]
+
+    obs = ht.HyTools()
+    obs.read_file(obs_ort_file,'envi')
+
+    utm_time = obs.get_band(9)
+    start_time = utm_time[utm_time != obs.no_data].min()
+    start_hour = int(start_time)
+    start_minute = (start_time-start_hour)*60
+    start_second = round((start_minute - int(start_minute))*60)
+    start_minute = int(start_minute)
+
+    start_delta = dt.timedelta(hours = start_hour,
+                                minutes = start_minute,
+                                seconds = start_second)
+
+
+    utm_time = obs.get_band(9)
+    end_time = utm_time[utm_time != obs.no_data].max()
+    end_hour = int(end_time)
+    end_minute = (end_time-end_hour)*60
+    end_second = round((end_minute - int(end_minute))*60)
+    end_minute = int(end_minute)
+
+    end_delta = dt.timedelta(hours = end_hour,
+                                minutes = end_minute,
+                                seconds = end_second)
+
+    return bounds,start_delta,end_delta
+
+
 def preprocess(input_tar,out_dir,temp_dir,res = 0):
     '''
-    input_tar = '/Users/achlus/data1/avcl/raw/f080709t01p00r15.tar.gz'
-    input_tar = '/Users/achlus/data1/avng/raw/ang20191027t204454.tar.gz'
-    out_dir ='/Users/achlus/data1/avcl/rdn/'
-    temp_dir ='/Users/achlus/data1/temp/'
     '''
 
     base_name = os.path.basename(input_tar)
 
     if base_name.startswith('ang'):
         base_name = base_name[:18]
+        date = dt.datetime.strptime(base_name[3:10],'%Y%m%d')
     elif base_name.startswith('f'):
         base_name = base_name[:16]
+        date = dt.datetime.strptime("20%s" % base_name[1:7],'%Y%m%d')
     else:
         raise ValueError('Unrecognized sensor')
 
@@ -120,7 +159,6 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
         glt_file = [x for x in tar_contents if x.endswith('glt')][0]
         create_loc_ort(loc_file,glt_file)
         time_correct(obs_ort_file)
-        datetime = base_name[3:].upper()
 
     #AVIRIS Classic
     elif base_name.startswith('f'):
@@ -151,6 +189,8 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
                         'f18', 'f19', 'f20', 'f21']:
             gains = np.r_[300.0 * np.ones(110), 600.0 * np.ones(50), 1200.0 * np.ones(64)]
 
+        create_loc_ort(loc_file,glt_file)
+
         rdn_header = rdn.get_header()
         rdn_header['byte order'] = 0
         rdn_header['no data value'] = -9999
@@ -164,23 +204,16 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
             band[~rdn.mask['no_data']] = -9999
             writer.write_band(band,iterator.current_band)
 
-        create_loc_ort(loc_file,glt_file)
-
-        #Get time from observables file
-        obs = ht.HyTools()
-        obs.read_file(obs_ort_file,'envi')
-        utm_time = obs.get_band(9)
-        start_time = utm_time[utm_time != obs.no_data].min()
-        hour = int(start_time)
-        minute = (start_time-hour)*60
-        second = int((minute - int(minute))*60)
-        minute = int(minute)
-
-        datetime = "20%sT%02d%02d%02d" % (base_name[1:7],hour,minute,second)
-
     loc_ort_file = loc_file+'_ort'
 
-    out_dir = "%s/SISTER%s_%s_L1B_RDN_000/" % (out_dir,instrument,datetime)
+    #Get spatial and temporal extents of datsaet
+    bounds,start_delta,end_delta = get_spatiotemporal_extents(loc_file,obs_ort_file)
+    start_time =date+start_delta
+    end_time =date+end_delta
+    datetime = start_time.strftime('%Y%m%dT%H%M%S')
+    lon_min,lon_max,lat_min,lat_max = bounds
+
+    out_dir = "%s/SISTER_%s_%s_L1B_RDN_000/" % (out_dir,instrument,datetime)
 
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
@@ -199,6 +232,42 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
 
         os.rename(file,new_file)
         os.rename(file+ '.hdr',new_file_hdr)
+
+        #Add spatial and temporal extents to header file
+        header = ht.io.envi.parse_envi_header(new_file_hdr)
+
+        # Create new header
+        clean_header = {}
+        clean_header['bands'] = header['bands']
+        clean_header['samples'] = header['samples']
+        clean_header['lines'] =  header['lines']
+        clean_header['interleave'] =  header['interleave']
+        clean_header['data type'] =  header['data type']
+        clean_header['map info'] =  header['map info']
+        clean_header['sensor type'] =instrument
+
+        if product == 'RDN':
+            clean_header['description'] = 'Radiance micro-watts/cm^2/nm/sr'
+            clean_header['wavelength'] =  header['wavelength']
+            clean_header['fwhm'] =  header['fwhm']
+            clean_header['wavelength units'] =  'nanometers'
+        elif product == 'OBS':
+            clean_header['description'] = 'Observation datacube'
+            clean_header['band names'] = ['path length','to-sensor azimuth',
+                                          'to-sensor zenith','to-sun azimuth',
+                                          'to-sun zenith','phase','slope','aspect',
+                                          'cosine i','UTC time']
+        elif product == 'LOC':
+            clean_header['description'] = 'Location datacube'
+            clean_header['band names'] = ['longitude','latitude','elevation']
+
+        clean_header['start acquisition time'] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+        clean_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+        clean_header['latitude min'] = lat_min
+        clean_header['longitude min'] = lon_min
+        clean_header['latitude max'] = lat_max
+        clean_header['longitude max'] = lon_max
+        ht.io.envi.write_envi_header(new_file,clean_header,mode = 'w')
 
         if res==0:
             shutil.move(new_file,out_dir)
