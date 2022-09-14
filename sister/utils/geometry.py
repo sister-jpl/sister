@@ -427,6 +427,8 @@ def rotate_coords(x_i,y_i,x_p,y_p,theta):
     y_r = y_p + ((x_i-x_p)*np.sin(theta)) + ((y_i-y_p)*np.cos(theta))
     return x_r,y_r
 
+
+
 def resample(in_file,out_dir,resolution,verbose = True, unrotate = False):
     ''' Perform a two-step spatial resampling to . First, pixels are aggregated and
     averaged, next a nearest neighbor algorithm is used to resample images to resolution.
@@ -515,7 +517,7 @@ def resample(in_file,out_dir,resolution,verbose = True, unrotate = False):
         band[~image.mask['no_data']] = np.nan
         bins  = view_as_blocks(band[:lines,:columns],(bin_size,bin_size))
 
-        if (iterator.current_band in [1,2,3,4,7]) and ('obs' in image.base_name):
+        if (iterator.current_band in [1,2,3,4,7]) and ('OBS' in image.base_name):
             bins = np.radians(bins)
             band = circmean(bins,axis=2,nan_policy = 'omit')
             band = circmean(band,axis=2,nan_policy = 'omit')
