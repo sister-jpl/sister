@@ -185,7 +185,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     swir_obj.read_file(swir_temp, 'envi')
 
     rdn_dict  = envi_header_dict()
-    rdn_dict ['description'] = "PRISMA Radiance v%s micro-watts/cm^2/nm/sr" % version
+    rdn_dict ['description'] = "Radiance v%s micro-watts/cm^2/nm/sr" % version
     rdn_dict ['lines']= vnir_obj.lines-4 #Clip edges of array
     rdn_dict ['samples']=vnir_obj.columns-4  #Clip edges of array
     rdn_dict ['bands']= len(vnir_waves.tolist() + swir_waves.tolist())
@@ -480,11 +480,10 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             out_header['map info'] = map_info
             out_header['start acquisition time'] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
             out_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
-
             out_header['latitude min'] =lat_min
             out_header['longitude min'] =lon_min
-            out_header['longitude max'] =lat_max
-            out_header['latitude max'] =lon_max
+            out_header['latitude max'] =lat_max
+            out_header['longitude max'] =lon_max
             out_header['sensor type'] ='PRISMA'
 
             output_name = '%sPRS_%s_%s_prj' % (out_dir,base_name,file)

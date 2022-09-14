@@ -523,7 +523,7 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     mask = mask==mask[0][0]
 
     rad_header  = envi_header_dict()
-    rad_header['description']= 'DESIS Radiance micro-watts/cm^2/nm/sr'
+    rad_header['description']= 'Radiance micro-watts/cm^2/nm/sr'
     rad_header['lines']= l1c_file.RasterYSize
     rad_header['samples']= l1c_file.RasterXSize
     rad_header['bands']= len(waves)-1
@@ -541,8 +541,9 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     rad_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
     rad_header['latitude min'] =lat_min
     rad_header['longitude min'] =lon_min
-    rad_header['longitude max'] =lat_max
-    rad_header['latitude max'] =lon_max
+    rad_header['latitude max'] =lat_max
+    rad_header['longitude max'] =lon_max
+
     rad_header['sensor type'] ='DESIS'
 
 
@@ -609,8 +610,8 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     loc_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
     loc_header['latitude min'] =lat_min
     loc_header['longitude min'] =lon_min
-    loc_header['longitude max'] =lat_max
-    loc_header['latitude max'] =lon_max
+    loc_header['latitude max'] =lat_max
+    loc_header['longitude max'] =lon_max
     loc_header['sensor type'] ='DESIS'
 
 
@@ -667,8 +668,8 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     obs_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
     obs_header['latitude min'] =lat_min
     obs_header['longitude min'] =lon_min
-    obs_header['longitude max'] =lat_max
-    obs_header['latitude max'] =lon_max
+    obs_header['latitude max'] =lat_max
+    obs_header['longitude max'] =lon_max
     obs_header['sensor type'] ='DESIS'
 
     writer = WriteENVI(obs_file,obs_header)
