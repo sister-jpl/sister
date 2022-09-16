@@ -242,7 +242,7 @@ def l1b_process(l1b_zip,out_dir,temp_dir,elev_dir,
     latitude = griddata(points, lat_vals, (lines,columns), method='linear')[:,85:]
 
     #Create initial elevation raster
-    elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
+    elevation,slope,aspect= terrain_generate(longitude,latitude,elev_dir,temp_dir)
     zone,direction = utm_zone(longitude,latitude)
 
     solar_az = solar.get_azimuth(latitude,longitude,start_time)
@@ -346,12 +346,11 @@ def l1b_process(l1b_zip,out_dir,temp_dir,elev_dir,
 
         #Recalculate elevation with new coordinates
         logging.info('Rebuilding DEM')
-        elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
+        elevation,slope,aspect= terrain_generate(longitude,latitude,elev_dir,temp_dir)
 
     loc_export(loc_file,longitude,latitude,elevation)
 
     # Generate remaining observable layers
-    slope,aspect = slope_aspect(elevation,temp_dir)
     cosine_i = calc_cosine_i(np.radians(solar_zn),
                              np.radians(solar_az),
                              np.radians(slope),
@@ -590,7 +589,7 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     solar_zn[mask] = -9999
 
     #Create elevation raster
-    elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
+    elevation,slope,aspect= terrain_generate(longitude,latitude,elev_dir,temp_dir)
     elevation[mask] = -9999
     longitude[mask] = -9999
     latitude[mask] = -9999
@@ -629,7 +628,6 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     sensor_zn[mask] = -9999
 
     # Generate remaining observable layers
-    slope,aspect = slope_aspect(elevation,temp_dir)
     cosine_i = calc_cosine_i(np.radians(solar_zn),
                              np.radians(solar_az),
                              np.radians(slope),

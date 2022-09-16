@@ -273,8 +273,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     longitude= geo['Longitude_VNIR'][2:-2,2:-2]
     latitude= geo['Latitude_VNIR'][2:-2,2:-2]
 
-    #Create initial elevation raster
-    elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
+    #Create initial terrain datsets
+    elevation,slope,aspect= terrain_generate(longitude,latitude,elev_dir,temp_dir)
     zone,direction = utm_zone(longitude,latitude)
 
     # Calculate satellite X,Y,Z position for each line
@@ -421,14 +421,13 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
 
         #Recalculate elevation with new coordinates
         logging.info('Rebuilding DEM')
-        elevation= dem_generate(longitude,latitude,elev_dir,temp_dir)
+        elevation,slope,aspect= terrain_generate(longitude,latitude,elev_dir,temp_dir)
 
 
     # Export location datacube
     loc_export(loc_file,longitude,latitude,elevation)
 
-    # Generate remaining observable layers
-    slope,aspect = slope_aspect(elevation,temp_dir)
+
     cosine_i = calc_cosine_i(np.radians(solar_zn),
                              np.radians(solar_az),
                              np.radians(slope),
