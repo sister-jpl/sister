@@ -123,8 +123,8 @@ def dda2utm(longitude,latitude,altitude,zn_dir =None):
     else:
         epsg_dir = 7
 
-    out_crs = pyproj.Proj("+init=EPSG:32%s%02d" % (epsg_dir,zone))
-    in_crs= pyproj.Proj("+init=EPSG:4326")
+    out_crs = pyproj.Proj("EPSG:32%s%02d" % (epsg_dir,zone))
+    in_crs= pyproj.Proj("EPSG:4326")
 
     easting,northing,up = pyproj.transform(in_crs,out_crs,
                                            longitude,
@@ -169,8 +169,8 @@ def utm2dd(easting,northing,zone,direction):
     else:
         epsg_dir = 7
 
-    in_crs = pyproj.Proj("+init=EPSG:32%s%02d" % (epsg_dir,zone))
-    out_crs= pyproj.Proj("+init=EPSG:4326")
+    in_crs = pyproj.Proj("EPSG:32%s%02d" % (epsg_dir,zone))
+    out_crs= pyproj.Proj("EPSG:4326")
     longitude,latitude= pyproj.transform(in_crs,out_crs,easting,northing)
     return longitude,latitude
 
@@ -469,6 +469,7 @@ def resample(in_file,out_dir,resolution,verbose = True, unrotate = False):
     x_coord_bin= np.nanmean(view_as_blocks(x_coord[:lines,:columns],
                                      (bin_size,bin_size)),axis=(2,3))
 
+
     # Get extent of output array
     xmax = int(resolution * (x_coord_bin.max()//resolution)) + resolution
     ymax = int(resolution * (y_coord_bin.max()//resolution)) + resolution
@@ -507,7 +508,7 @@ def resample(in_file,out_dir,resolution,verbose = True, unrotate = False):
     out_header['byte order'] = 0
     out_header['data ignore value'] = image.no_data
 
-    writer = WriteENVI(out_image,out_header)
+    writer = WriteENVI(out_image+'_test3',out_header)
     iterator =image.iterate(by = 'band')
 
     while not iterator.complete:
@@ -525,7 +526,7 @@ def resample(in_file,out_dir,resolution,verbose = True, unrotate = False):
         else:
             band = np.nanmean(bins,axis=(2,3))
 
-        band = band[indices_int[0],indices_int[1]].reshape(image_shape)
-        band[mask]= image.no_data
+        # band = band[indices_int[0],indices_int[1]].reshape(image_shape)
+        # band[mask]= image.no_data
         band[np.isnan(band)]= image.no_data
         writer.write_band(band,iterator.current_band)
