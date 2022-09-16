@@ -123,8 +123,8 @@ def dda2utm(longitude,latitude,altitude,zn_dir =None):
     else:
         epsg_dir = 7
 
-    out_crs = pyproj.Proj("EPSG:32%s%02d" % (epsg_dir,zone))
-    in_crs= pyproj.Proj("EPSG:4326")
+    out_crs = pyproj.Proj(init="EPSG:32%s%02d" % (epsg_dir,zone))
+    in_crs= pyproj.Proj(init="EPSG:4326")
 
     easting,northing,up = pyproj.transform(in_crs,out_crs,
                                            longitude,
