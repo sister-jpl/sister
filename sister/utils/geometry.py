@@ -169,8 +169,8 @@ def utm2dd(easting,northing,zone,direction):
     else:
         epsg_dir = 7
 
-    in_crs = pyproj.Proj("EPSG:32%s%02d" % (epsg_dir,zone))
-    out_crs= pyproj.Proj("EPSG:4326")
+    in_crs = pyproj.Proj(init="EPSG:32%s%02d" % (epsg_dir,zone))
+    out_crs= pyproj.Proj(init="EPSG:4326")
     longitude,latitude= pyproj.transform(in_crs,out_crs,easting,northing)
     return longitude,latitude
 
