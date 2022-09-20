@@ -55,6 +55,16 @@ def terrain_generate(longitude,latitude,elev_dir,temp_dir):
 
     if 'aws' in elev_dir:
         tiles = pd.read_csv(elev_dir + 'tileList.txt',header = None).values.flatten()
+
+        # Retry reading tile list if fails
+        retry = 0
+        while (retry < 10) & (len(tiles) != 26450):
+            tiles = pd.read_csv(elev_dir + 'tileList.txt',header = None).values.flatten()
+            retry+=1
+
+        if len(tiles) != 26450:
+            raise ValueError('Failed to download tile list.')
+
     else:
         tiles = glob.glob(elev_dir + '*.tar.gz')
 
