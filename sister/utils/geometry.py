@@ -508,7 +508,7 @@ def resample(in_file,out_dir,resolution,verbose = True, unrotate = False):
     out_header['byte order'] = 0
     out_header['data ignore value'] = image.no_data
 
-    writer = WriteENVI(out_image+'_test3',out_header)
+    writer = WriteENVI(out_image,out_header)
     iterator =image.iterate(by = 'band')
 
     while not iterator.complete:
