@@ -249,7 +249,7 @@ def l1b_process(l1b_zip,out_dir,temp_dir,elev_dir,
     solar_zn = 90-solar.get_altitude(latitude,longitude,start_time)
 
     ecef = pyproj.Proj(proj='geocent', ellps='WGS84', datum='WGS84')
-    lla = pyproj.Proj(proj='latlong', ellps='WGS84', datum='WGS84')
+    lla = pyproj.Proj(proj='longlat', ellps='WGS84', datum='WGS84')
 
     grd_xyz = np.array(pyproj.transform(lla, ecef,
                                longitude,
