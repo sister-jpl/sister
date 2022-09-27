@@ -442,10 +442,11 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
                cosine_i,utc_time)
 
 
-    lon_min = longitude.min()
-    lat_min = latitude.min()
-    lon_max = longitude.max()
-    lat_max = latitude.max()
+    # Get image bounds coordinates
+    corner_1 = [longitude[0],latitude[0]]
+    corner_2 = [longitude[0],latitude[-1]]
+    corner_3 = [longitude[-1],latitude[-1]]
+    corner_4 = [longitude[-1],latitude[0]]
 
     start_time = dt.datetime.strptime(base_name.split('_')[0],'%Y%m%d%H%M%S')
     end_time = dt.datetime.strptime(base_name.split('_')[1],'%Y%m%d%H%M%S')
@@ -479,10 +480,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             out_header['map info'] = map_info
             out_header['start acquisition time'] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
             out_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
-            out_header['latitude min'] =lat_min
-            out_header['longitude min'] =lon_min
-            out_header['latitude max'] =lat_max
-            out_header['longitude max'] =lon_max
+            out_header['bounding box'] =[corner_1,corner_2,corner_3,corner_4]
             out_header['sensor type'] ='PRISMA'
 
             output_name = '%sPRS_%s_%s_prj' % (out_dir,base_name,file)
