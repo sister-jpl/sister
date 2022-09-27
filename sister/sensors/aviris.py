@@ -41,6 +41,13 @@ def create_loc_ort(loc_file,glt_file):
     lat= np.copy(loc.get_band(1))
     elv = np.copy(loc.get_band(2))
 
+    # Get image bounds coordinates
+    corner_1 = [lon[0,0],  lat[0,0]]
+    corner_2 = [lon[0,-1], lat[0,-1]]
+    corner_3 = [lon[-1,-1],lat,-1]]
+    corner_4 = [lon[-1,0], latitude[-1,0]]
+
+
     lon_proj = lon[lines.flatten()-1,samples.flatten()-1]
     lon_proj = lon_proj.reshape(lines.shape)
 
@@ -65,6 +72,8 @@ def create_loc_ort(loc_file,glt_file):
     writer.write_band(lat_proj,1)
     writer.write_band(elv_proj,2)
     writer.close()
+
+    return corner_1,corner_2,corner_3,corner_4
 
 def time_correct(obs_ort_file):
     obs = ht.HyTools()
@@ -157,7 +166,7 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
         rdn_file = [x for x in tar_contents if x.endswith('img')][0]
         loc_file = [x for x in tar_contents if x.endswith('loc')][0]
         glt_file = [x for x in tar_contents if x.endswith('glt')][0]
-        create_loc_ort(loc_file,glt_file)
+        corner_1,corner_2,corner_3,corner_4 = create_loc_ort(loc_file,glt_file)
         time_correct(obs_ort_file)
 
     #AVIRIS Classic
@@ -189,7 +198,7 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
                         'f18', 'f19', 'f20', 'f21']:
             gains = np.r_[300.0 * np.ones(110), 600.0 * np.ones(50), 1200.0 * np.ones(64)]
 
-        create_loc_ort(loc_file,glt_file)
+        corner_1,corner_2,corner_3,corner_4 = create_loc_ort(loc_file,glt_file)
 
         rdn_header = rdn.get_header()
         rdn_header['byte order'] = 0
@@ -263,10 +272,8 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
 
         clean_header['start acquisition time'] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
         clean_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
-        clean_header['latitude min'] = lat_min
-        clean_header['longitude min'] = lon_min
-        clean_header['latitude max'] = lat_max
-        clean_header['longitude max'] = lon_max
+        clean_header['bounding box'] =[corner_1,corner_2,corner_3,corner_4]
+
         ht.io.envi.write_envi_header(new_file,clean_header,mode = 'w')
 
         if res==0:
