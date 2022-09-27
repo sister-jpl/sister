@@ -20,8 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import os
 import shutil
 import tarfile
-import hytools as ht
 import datetime as dt
+import hytools as ht
 from hytools.io.envi import WriteENVI
 import numpy as np
 from ..utils.geometry import resample
@@ -44,9 +44,8 @@ def create_loc_ort(loc_file,glt_file):
     # Get image bounds coordinates
     corner_1 = [lon[0,0],  lat[0,0]]
     corner_2 = [lon[0,-1], lat[0,-1]]
-    corner_3 = [lon[-1,-1],lat,-1]]
-    corner_4 = [lon[-1,0], latitude[-1,0]]
-
+    corner_3 = [lon[-1,-1],lat[-1,-1]]
+    corner_4 = [lon[-1,0], lat[-1,0]]
 
     lon_proj = lon[lines.flatten()-1,samples.flatten()-1]
     lon_proj = lon_proj.reshape(lines.shape)
@@ -98,17 +97,10 @@ def time_correct(obs_ort_file):
 
         obs.close_data()
 
-def get_spatiotemporal_extents(loc_file,obs_ort_file):
+def get_temporal_extent(obs_ort_file):
     ''' Get image acquiition start and end time and bounding box of image
     '''
 
-    loc = ht.HyTools()
-    loc.read_file(loc_file,'envi')
-
-    bounds = [loc.get_band(0).min(),
-             loc.get_band(0).max(),
-             loc.get_band(1).min(),
-             loc.get_band(1).max()]
 
     obs = ht.HyTools()
     obs.read_file(obs_ort_file,'envi')
@@ -136,7 +128,7 @@ def get_spatiotemporal_extents(loc_file,obs_ort_file):
                                 minutes = end_minute,
                                 seconds = end_second)
 
-    return bounds,start_delta,end_delta
+    return start_delta,end_delta
 
 
 def preprocess(input_tar,out_dir,temp_dir,res = 0):
@@ -216,11 +208,10 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
     loc_ort_file = loc_file+'_ort'
 
     #Get spatial and temporal extents of datsaet
-    bounds,start_delta,end_delta = get_spatiotemporal_extents(loc_file,obs_ort_file)
+    start_delta,end_delta = get_temporal_extent(obs_ort_file)
     start_time =date+start_delta
     end_time =date+end_delta
     datetime = start_time.strftime('%Y%m%dT%H%M%S')
-    lon_min,lon_max,lat_min,lat_max = bounds
 
     out_dir = "%s/SISTER_%s_%s_L1B_RDN_000/" % (out_dir,instrument,datetime)
 
