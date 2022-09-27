@@ -443,10 +443,10 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
 
 
     # Get image bounds coordinates
-    corner_1 = [longitude[0],latitude[0]]
-    corner_2 = [longitude[0],latitude[-1]]
-    corner_3 = [longitude[-1],latitude[-1]]
-    corner_4 = [longitude[-1],latitude[0]]
+    corner_1 = [longitude[0,0],  latitude[0,0]]
+    corner_2 = [longitude[0,-1], latitude[0,-1]]
+    corner_3 = [longitude[-1,-1],latitude[-1,-1]]
+    corner_4 = [longitude[-1,0], latitude[-1,0]]
 
     start_time = dt.datetime.strptime(base_name.split('_')[0],'%Y%m%d%H%M%S')
     end_time = dt.datetime.strptime(base_name.split('_')[1],'%Y%m%d%H%M%S')
