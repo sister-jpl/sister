@@ -176,7 +176,7 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
 
     if base_name.startswith('ang'):
         base_name = base_name[:18]
-        date = dt.datetime.strptime(base_name[3:10],'%Y%m%d')
+        date = dt.datetime.strptime(base_name[3:11],'%Y%m%d')
     elif base_name.startswith('f'):
         base_name = base_name[:16]
         date = dt.datetime.strptime("20%s" % base_name[1:7],'%Y%m%d')
@@ -244,7 +244,7 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
 
     loc_ort_file = loc_file+'_ort'
 
-    #Get spatial and temporal extents of datsaet
+    #Get spatial and temporal extents of dataset
     start_delta,end_delta = get_temporal_extent(obs_ort_file)
     start_time =date+start_delta
     end_time =date+end_delta
