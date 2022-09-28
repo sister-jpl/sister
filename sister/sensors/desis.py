@@ -18,7 +18,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-
 import datetime as dt
 import os
 import logging
@@ -455,8 +454,6 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
         zipped.extractall(temp_dir)
 
     l1c_file = gdal.Open('%s/DESIS-HSI-L1C-%s-SPECTRAL_IMAGE.tif' % (temp_dir,base_name))
-    header_file = '%s/DESIS-HSI-L1C-%s-SPECTRAL_IMAGE.hdr' % (temp_dir,base_name)
-    header_dict = ht.io.envi.parse_envi_header(header_file)
 
     # Parse relevant metadata from XML file, assume metadata are in same directory as images
     tree = ET.parse('%s/DESIS-HSI-L1C-%s-METADATA.xml' % (temp_dir,base_name))
@@ -481,8 +478,7 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     gain = np.array(band_meta['gainOfBand'])
     waves = np.array(band_meta['wavelengthCenterOfBand'])
     fwhm = np.array(band_meta['wavelengthWidthOfBand'])
-    response = np.array(band_meta['response'])
-    response_waves = np.array(band_meta['wavelengths'])
+
 
     base =  root[2]
 
@@ -491,7 +487,6 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     bbox_lon = []
     polygon = base.findall('spatialCoverage')[0].findall('boundingPolygon')[0]
     for point in polygon:
-        name= point.findall('frame')[0].text
         bbox_lat.append(float(point.findall('latitude')[0].text))
         bbox_lon.append(float(point.findall('longitude')[0].text))
 
@@ -507,9 +502,6 @@ def l1c_process(l1c_zip,out_dir,temp_dir,elev_dir):
     time_str=time_str.replace('T',' ').replace('Z','')
     end_time = dt.datetime.strptime(time_str,"%Y-%m-%d %H:%M:%S.%f")
     end_time = end_time.replace(tzinfo=dt.timezone.utc)
-    date = dt.datetime.strftime(start_time , "%Y%m%d")
-
-    l1c_band = l1c_file.ReadAsArray().mean(axis=0)
 
     # Get ISS altitude
     altitude_m = float(base.findall('altitudeCoverage')[0].text)
