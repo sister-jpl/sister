@@ -96,17 +96,17 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
 
     l1_obj = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
     version = l1_obj.attrs['Processor_Version'].decode('UTF-8')
+    version_str = version.replace('.','').replace('-','')
+
 
     apply_shift = False
     if shift:
         apply_shift = True
-
         shift_obj = np.load(shift)
-        interp_kind = str(shift_obj['interp_kind'])
-        if version == '3.9-2':
-            shift_surface = shift_obj['shifts_v2']
-        elif version == '3.9-3':
-            shift_surface = shift_obj['shifts_v3']
+        if 'shifts_v%s' % version_str in shift_obj.keys():
+            shift_surface = shift_obj['shifts_v%s' % version_str]
+            interp_kind =str(shift_obj['interp_kind'])
+
         else:
             print('Smile: Processor version not found.')
             apply_shift = False
@@ -115,10 +115,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     if rad_coeff:
         apply_coeff = True
         coeff_obj = np.load(rad_coeff)
-        if version == '3.9-2':
-            coeff_arr = coeff_obj['coeffs_v2']
-        elif version == '3.9-3':
-            coeff_arr = coeff_obj['coeffs_v3']
+        if 'coeffs_v%s' % version_str in coeff_obj.keys():
+            shift_surface = coeff_obj['coeffs_v%s' % version_str]
         else:
             print('Rad coefficients: Processor version not found.')
             apply_coeff = False
