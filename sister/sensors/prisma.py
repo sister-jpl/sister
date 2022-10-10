@@ -116,7 +116,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         apply_coeff = True
         coeff_obj = np.load(rad_coeff)
         if 'coeffs_v%s' % version_str in coeff_obj.keys():
-            shift_surface = coeff_obj['coeffs_v%s' % version_str]
+            coeff_arr = coeff_obj['coeffs_v%s' % version_str]
         else:
             print('Rad coefficients: Processor version not found.')
             apply_coeff = False
@@ -307,21 +307,21 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
 
     #Fit a line to ground time
     X = np.concatenate([np.arange(1000)[:,np.newaxis], np.ones(grd_t.shape)],axis=1)
-    slope, intercept = np.linalg.lstsq(X,grd_t,rcond=-1)[0].flatten()
-    line_t_linear = slope*np.arange(1000)+ intercept
+    time_slope, intercept = np.linalg.lstsq(X,grd_t,rcond=-1)[0].flatten()
+    line_t_linear = time_slope*np.arange(1000)+ intercept
 
     #Fit a line to satellite time
     measurements = np.arange(len(sat_t))
     X = np.concatenate([measurements[:,np.newaxis], np.ones(sat_t.shape)],axis=1)
-    slope, intercept = np.linalg.lstsq(X,sat_t,rcond=-1)[0].flatten()
-    sat_t_linear = slope*measurements+ intercept
+    time_slope, intercept = np.linalg.lstsq(X,sat_t,rcond=-1)[0].flatten()
+    sat_t_linear = time_slope*measurements+ intercept
 
     # Interpolate x,y,z satelite positions
     sat_xyz = []
     for sat_pos in ['x','y','z']:
         sat_p = np.array(pvs['Wgs84_pos_%s' % sat_pos][:])
-        slope, intercept = np.linalg.lstsq(X,sat_p,rcond=-1)[0].flatten()
-        sat_p_linear = slope*measurements+ intercept
+        sat_slope, intercept = np.linalg.lstsq(X,sat_p,rcond=-1)[0].flatten()
+        sat_p_linear = sat_slope*measurements+ intercept
         interpolator = interp1d(sat_t_linear,sat_p_linear,
                                 fill_value="extrapolate",kind = 'linear')
         sat_interp = interpolator(line_t_linear)
