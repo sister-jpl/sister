@@ -20,14 +20,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import os
 import shutil
 import tarfile
-import hytools as ht
 import datetime as dt
+import hytools as ht
 from hytools.io.envi import WriteENVI
 import numpy as np
 from ..utils.geometry import resample
 
 
 def create_loc_ort(loc_file,glt_file):
+
+    '''
+    Create an ortho rectified location data file and return corner coordinates
+    of flightline
+    '''
+
     loc = ht.HyTools()
     loc.read_file(loc_file,'envi')
 
@@ -40,6 +46,12 @@ def create_loc_ort(loc_file,glt_file):
     lon = np.copy(loc.get_band(0))
     lat= np.copy(loc.get_band(1))
     elv = np.copy(loc.get_band(2))
+
+    # Get image bounds coordinates
+    corner_1 = [lon[0,0],  lat[0,0]]
+    corner_2 = [lon[0,-1], lat[0,-1]]
+    corner_3 = [lon[-1,-1],lat[-1,-1]]
+    corner_4 = [lon[-1,0], lat[-1,0]]
 
     lon_proj = lon[lines.flatten()-1,samples.flatten()-1]
     lon_proj = lon_proj.reshape(lines.shape)
@@ -66,7 +78,14 @@ def create_loc_ort(loc_file,glt_file):
     writer.write_band(elv_proj,2)
     writer.close()
 
+    return corner_1,corner_2,corner_3,corner_4
+
 def time_correct(obs_ort_file):
+    '''
+    Replaces erroneous time values in obs file with time from
+    flightline file name, affects a small number of AVIRIS-NG images
+    '''
+
     obs = ht.HyTools()
     obs.read_file(obs_ort_file,'envi')
 
@@ -89,17 +108,11 @@ def time_correct(obs_ort_file):
 
         obs.close_data()
 
-def get_spatiotemporal_extents(loc_file,obs_ort_file):
-    ''' Get image acquiition start and end time and bounding box of image
+def get_temporal_extent(obs_ort_file):
+    '''
+    Get image acquisition start and end time
     '''
 
-    loc = ht.HyTools()
-    loc.read_file(loc_file,'envi')
-
-    bounds = [loc.get_band(0).min(),
-             loc.get_band(0).max(),
-             loc.get_band(1).min(),
-             loc.get_band(1).max()]
 
     obs = ht.HyTools()
     obs.read_file(obs_ort_file,'envi')
@@ -127,18 +140,43 @@ def get_spatiotemporal_extents(loc_file,obs_ort_file):
                                 minutes = end_minute,
                                 seconds = end_second)
 
-    return bounds,start_delta,end_delta
+    return start_delta,end_delta
 
 
 def preprocess(input_tar,out_dir,temp_dir,res = 0):
     '''
+    Preprocess AVIRIS data for SISTER workflow
+
+    This function exports three files:
+         *_rad* : Merged and optionally shift corrected radiance cube
+         *_obs* : Observables file in the format of JPL obs files:
+                 1. Pathlength (m)
+                 2. To-sensor view azimuth angle (degrees)
+                 3. To-sensor view zenith angle (degrees)
+                 4. To-sun azimuth angle (degrees)
+                 5. To-sun zenith angle (degrees)
+                 6. Phase
+                 7. Slope (Degrees)
+                 8. Aspect (Degrees)
+                 9. Cosine i
+                 10. UTC decimal hours
+         *_loc* : Location file in the following format:
+                 1. Longitude (decimal degrees)
+                 2. Longitude (decimal degrees)
+                 3. Elevation (m)
+
+     input_tar(str): AVIRIS Classic or NG radiance data product
+     out_dir(str): Output directory of ENVI datasets
+     temp_dir(str): Temporary directory for intermediate products
+     res(int): Output spatial resolution in map units, 0 = native resolution.
+
     '''
 
     base_name = os.path.basename(input_tar)
 
     if base_name.startswith('ang'):
         base_name = base_name[:18]
-        date = dt.datetime.strptime(base_name[3:10],'%Y%m%d')
+        date = dt.datetime.strptime(base_name[3:11],'%Y%m%d')
     elif base_name.startswith('f'):
         base_name = base_name[:16]
         date = dt.datetime.strptime("20%s" % base_name[1:7],'%Y%m%d')
@@ -157,7 +195,7 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
         rdn_file = [x for x in tar_contents if x.endswith('img')][0]
         loc_file = [x for x in tar_contents if x.endswith('loc')][0]
         glt_file = [x for x in tar_contents if x.endswith('glt')][0]
-        create_loc_ort(loc_file,glt_file)
+        corner_1,corner_2,corner_3,corner_4 = create_loc_ort(loc_file,glt_file)
         time_correct(obs_ort_file)
 
     #AVIRIS Classic
@@ -189,7 +227,7 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
                         'f18', 'f19', 'f20', 'f21']:
             gains = np.r_[300.0 * np.ones(110), 600.0 * np.ones(50), 1200.0 * np.ones(64)]
 
-        create_loc_ort(loc_file,glt_file)
+        corner_1,corner_2,corner_3,corner_4 = create_loc_ort(loc_file,glt_file)
 
         rdn_header = rdn.get_header()
         rdn_header['byte order'] = 0
@@ -206,12 +244,11 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
 
     loc_ort_file = loc_file+'_ort'
 
-    #Get spatial and temporal extents of datsaet
-    bounds,start_delta,end_delta = get_spatiotemporal_extents(loc_file,obs_ort_file)
+    #Get spatial and temporal extents of dataset
+    start_delta,end_delta = get_temporal_extent(obs_ort_file)
     start_time =date+start_delta
     end_time =date+end_delta
     datetime = start_time.strftime('%Y%m%dT%H%M%S')
-    lon_min,lon_max,lat_min,lat_max = bounds
 
     out_dir = "%s/SISTER_%s_%s_L1B_RDN_000/" % (out_dir,instrument,datetime)
 
@@ -263,10 +300,8 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
 
         clean_header['start acquisition time'] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
         clean_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
-        clean_header['latitude min'] = lat_min
-        clean_header['longitude min'] = lon_min
-        clean_header['latitude max'] = lat_max
-        clean_header['longitude max'] = lon_max
+        clean_header['bounding box'] =[corner_1,corner_2,corner_3,corner_4]
+
         ht.io.envi.write_envi_header(new_file,clean_header,mode = 'w')
 
         if res==0:

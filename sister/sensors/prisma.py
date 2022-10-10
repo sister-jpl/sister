@@ -96,17 +96,17 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
 
     l1_obj = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
     version = l1_obj.attrs['Processor_Version'].decode('UTF-8')
+    version_str = version.replace('.','').replace('-','')
+
 
     apply_shift = False
     if shift:
         apply_shift = True
-
         shift_obj = np.load(shift)
-        interp_kind = str(shift_obj['interp_kind'])
-        if version == '3.9-2':
-            shift_surface = shift_obj['shifts_v2']
-        elif version == '3.9-3':
-            shift_surface = shift_obj['shifts_v3']
+        if 'shifts_v%s' % version_str in shift_obj.keys():
+            shift_surface = shift_obj['shifts_v%s' % version_str]
+            interp_kind =str(shift_obj['interp_kind'])
+
         else:
             print('Smile: Processor version not found.')
             apply_shift = False
@@ -115,10 +115,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     if rad_coeff:
         apply_coeff = True
         coeff_obj = np.load(rad_coeff)
-        if version == '3.9-2':
-            coeff_arr = coeff_obj['coeffs_v2']
-        elif version == '3.9-3':
-            coeff_arr = coeff_obj['coeffs_v3']
+        if 'coeffs_v%s' % version_str in coeff_obj.keys():
+            shift_surface = coeff_obj['coeffs_v%s' % version_str]
         else:
             print('Rad coefficients: Processor version not found.')
             apply_coeff = False
@@ -442,10 +440,11 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
                cosine_i,utc_time)
 
 
-    lon_min = longitude.min()
-    lat_min = latitude.min()
-    lon_max = longitude.max()
-    lat_max = latitude.max()
+    # Get image bounds coordinates
+    corner_1 = [longitude[0,0],  latitude[0,0]]
+    corner_2 = [longitude[0,-1], latitude[0,-1]]
+    corner_3 = [longitude[-1,-1],latitude[-1,-1]]
+    corner_4 = [longitude[-1,0], latitude[-1,0]]
 
     start_time = dt.datetime.strptime(base_name.split('_')[0],'%Y%m%d%H%M%S')
     end_time = dt.datetime.strptime(base_name.split('_')[1],'%Y%m%d%H%M%S')
@@ -479,10 +478,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             out_header['map info'] = map_info
             out_header['start acquisition time'] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
             out_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
-            out_header['latitude min'] =lat_min
-            out_header['longitude min'] =lon_min
-            out_header['latitude max'] =lat_max
-            out_header['longitude max'] =lon_max
+            out_header['bounding box'] =[corner_1,corner_2,corner_3,corner_4]
             out_header['sensor type'] ='PRISMA'
 
             output_name = '%sPRS_%s_%s_prj' % (out_dir,base_name,file)

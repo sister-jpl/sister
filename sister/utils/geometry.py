@@ -508,7 +508,7 @@ def resample(in_file,out_dir,resolution,verbose = True, unrotate = False):
     out_header['byte order'] = 0
     out_header['data ignore value'] = image.no_data
 
-    writer = WriteENVI(out_image+'_test3',out_header)
+    writer = WriteENVI(out_image,out_header)
     iterator =image.iterate(by = 'band')
 
     while not iterator.complete:
@@ -526,7 +526,7 @@ def resample(in_file,out_dir,resolution,verbose = True, unrotate = False):
         else:
             band = np.nanmean(bins,axis=(2,3))
 
-        # band = band[indices_int[0],indices_int[1]].reshape(image_shape)
-        # band[mask]= image.no_data
+        band = band[indices_int[0],indices_int[1]].reshape(image_shape)
+        band[mask]= image.no_data
         band[np.isnan(band)]= image.no_data
         writer.write_band(band,iterator.current_band)
