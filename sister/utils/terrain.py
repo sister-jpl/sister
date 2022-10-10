@@ -28,11 +28,11 @@ import tarfile
 import logging
 import numpy as np
 import hytools as ht
-from hytools.io.envi import WriteENVI,envi_header_dict
 import pandas as pd
 from rtree import index
 from scipy.spatial import cKDTree
 from .misc import download_file
+from .geometry import utm2dd,utm_zone
 
 
 def terrain_generate(longitude,latitude,elev_dir,temp_dir):
@@ -104,58 +104,70 @@ def terrain_generate(longitude,latitude,elev_dir,temp_dir):
     dem_file  = '%stemp_dem' % temp_dir
     os.system('gdal_merge.py -o %s -of ENVI %sCopernicus_DSM*' % (dem_file,temp_dir))
 
+    zone,direction  = utm_zone(longitude, latitude)
+    if direction == 'North':
+        epsg_dir = 6
+    else:
+        epsg_dir = 7
+
+    out_crs = "EPSG:32%s%02d" % (epsg_dir,zone)
+
+    dem_file_utm =  dem_file+'_utm'
+
+    os.system('gdalwarp -t_srs %s -tr 30 30 -of ENVI %s %s ' % (out_crs, dem_file,dem_file_utm))
+
     slope_file =  '%stemp_slope' % temp_dir
     aspect_file =  '%stemp_aspect' % temp_dir
 
     logging.info('Calculating slope')
-    os.system('gdaldem slope -compute_edges -of ENVI %s %s'% (dem_file,slope_file))
+    os.system('gdaldem slope -compute_edges -of ENVI %s %s'% (dem_file_utm,slope_file))
 
     logging.info('Calculating aspect')
-    os.system('gdaldem aspect -compute_edges -of ENVI %s %s' % (dem_file,aspect_file))
+    os.system('gdaldem aspect -compute_edges -of ENVI %s %s' % (dem_file_utm,aspect_file))
 
+    #Load dem file and create spatial index
+    trr_obj = ht.HyTools()
+    trr_obj.read_file(dem_file_utm, 'envi')
+
+    ulx = float(trr_obj.map_info[3])
+    uly = float(trr_obj.map_info[4])
+    pix_x = float(trr_obj.map_info[5])
+    pix_y = float(trr_obj.map_info[6])
+
+    #Calculate UTM coordinates
+    trr_northing,trr_easting = np.indices((trr_obj.lines,trr_obj.columns))
+    trr_northing = uly - trr_northing*pix_y
+    trr_easting = ulx + trr_easting*pix_x
+
+    #Convert to lat and lon
+    trr_lon, trr_lat = utm2dd(trr_easting,trr_northing,zone,direction)
+
+    #Create spatial index and nearest neighbor sample
+    src_points =np.concatenate([np.expand_dims(trr_lon.flatten(),axis=1),
+                                np.expand_dims(trr_lat.flatten(),axis=1)],axis=1)
+    tree = cKDTree(src_points,balanced_tree= False)
+
+    dst_points = np.concatenate([longitude.flatten()[:,np.newaxis],
+                                 latitude.flatten()[:,np.newaxis]],
+                                 axis=1)
+
+    indexes = tree.query(dst_points,k=1)[1]
+    indices_int = np.unravel_index(indexes,(trr_obj.lines,
+                                            trr_obj.columns))
+
+    # Clip terrain datasets to extent of PRISMA data
     terrain_arrs = []
-
-    for file in [dem_file,slope_file,aspect_file]:
-
+    for file in [dem_file_utm,slope_file,aspect_file]:
         trr_obj = ht.HyTools()
         trr_obj.read_file(file, 'envi')
+        trr_subset = trr_obj.get_band(0)
 
-        ulx = float(trr_obj.map_info[3])
-        uly = float(trr_obj.map_info[4])
-        pix_x = float(trr_obj.map_info[5])
-        pix_y = float(trr_obj.map_info[6])
-
-        trr_lat,trr_lon = np.indices((trr_obj.lines,trr_obj.columns))
-
-        trr_xl = int((lon_min-ulx)//pix_x)
-        trr_xr = int((lon_max-ulx)//pix_x)
-        trr_yu = int((uly-lat_max)//pix_y)
-        trr_yd = int((uly-lat_min)//pix_y)
-
-        trr_subset = trr_obj.get_chunk(trr_xl,trr_xr,trr_yu,trr_yd)
-        trr_lat,trr_lon = np.indices(trr_subset.shape[:2])
-        trr_lat = (lat_max- trr_lat*pix_y).flatten()
-        trr_lon = (lon_min+ trr_lon*pix_x).flatten()
-
-        #Create spatial index and nearest neighbor sample
-        src_points =np.concatenate([np.expand_dims(trr_lon,axis=1),
-                                    np.expand_dims(trr_lat,axis=1)],axis=1)
-        tree = cKDTree(src_points,balanced_tree= False)
-
-        dst_points = np.concatenate([longitude.flatten()[:,np.newaxis],
-                                     latitude.flatten()[:,np.newaxis]],
-                                     axis=1)
-
-        indexes = tree.query(dst_points,k=1)[1]
-        indices_int = np.unravel_index(indexes,(trr_subset.shape[0],
-                                                trr_subset.shape[1]))
         terrain = trr_subset[indices_int[0],indices_int[1]].reshape(longitude.shape)
 
         #Set negative elevations to 0
         if (np.sum(terrain<0) > 0) and 'dem' in file:
             logging.warning('Elevations below sea level found, setting to 0m')
             terrain[terrain<0] =0
-
         terrain_arrs.append(terrain)
 
     return terrain_arrs
