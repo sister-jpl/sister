@@ -116,7 +116,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         apply_coeff = True
         coeff_obj = np.load(rad_coeff)
         if 'coeffs_v%s' % version_str in coeff_obj.keys():
-            shift_surface = coeff_obj['coeffs_v%s' % version_str]
+            coeff_arr = coeff_obj['coeffs_v%s' % version_str]
         else:
             print('Rad coefficients: Processor version not found.')
             apply_coeff = False
