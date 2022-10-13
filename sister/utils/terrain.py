@@ -114,7 +114,7 @@ def terrain_generate(longitude,latitude,elev_dir,temp_dir):
 
     dem_file_utm =  dem_file+'_utm'
 
-    os.system('gdalwarp -t_srs %s -tr 30 30 -of ENVI %s %s ' % (out_crs, dem_file,dem_file_utm))
+    os.system('gdalwarp -overwrite -t_srs %s -tr 30 30 -of ENVI %s %s ' % (out_crs, dem_file,dem_file_utm))
 
     slope_file =  '%stemp_slope' % temp_dir
     aspect_file =  '%stemp_aspect' % temp_dir
