@@ -60,7 +60,7 @@ def terrain_generate(longitude,latitude,elev_dir,temp_dir):
         retry = 0
         while (retry < 10) & (len(tiles) != 26450):
             tiles = pd.read_csv(elev_dir + 'tileList.txt',header = None).values.flatten()
-            retry+=
+            retry+= 1
 
         if len(tiles) != 26450:
             raise ValueError('Failed to download tile list.')
