@@ -102,7 +102,7 @@ def terrain_generate(longitude,latitude,elev_dir,temp_dir):
 
     logging.info('Merging DEM tiles')
     dem_file  = '%stemp_dem' % temp_dir
-    os.system('gdal_merge.py -o %s -of ENVI %sCopernicus_DSM*' % (dem_file,temp_dir))
+    os.system('gdal_merge.py -o %s %sCopernicus_DSM*' % (dem_file,temp_dir))
 
     zone,direction  = utm_zone(longitude, latitude)
     if direction == 'North':
