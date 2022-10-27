@@ -101,7 +101,7 @@ def terrain_generate(longitude,latitude,elev_dir,temp_dir):
     logging.info(tile_string)
 
     logging.info('Merging DEM tiles')
-    dem_file  = '%stemp_dem.tif' % temp_dir
+    dem_file  = '%stemp_dem' % temp_dir
     os.system('gdal_merge.py -o %s -of GTiff %sCopernicus_DSM*' % (dem_file,temp_dir))
 
     zone,direction  = utm_zone(longitude, latitude)
@@ -114,9 +114,8 @@ def terrain_generate(longitude,latitude,elev_dir,temp_dir):
 
     dem_file_utm =  dem_file+'_utm'
 
-    command = 'gdalwarp -overwrite -s_srs EPSG:4329 -t_srs %s -tr 30 30 -r near -of ENVI %s %s ' % (out_crs, dem_file,dem_file_utm)
-    print(command)
-    os.system(command)
+    warp_command = 'gdalwarp -overwrite -t_srs %s -tr 30 30 -r near -of ENVI %s %s ' % (out_crs, dem_file,dem_file_utm)
+    os.system(warp_command)
 
     slope_file =  '%stemp_slope' % temp_dir
     aspect_file =  '%stemp_aspect' % temp_dir
