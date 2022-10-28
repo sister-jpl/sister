@@ -98,6 +98,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     version = l1_obj.attrs['Processor_Version'].decode('UTF-8')
     version_str = version.replace('.','').replace('-','')
 
+    logging.info('PRISMA processor: %s' % version)
 
     apply_shift = False
     if shift:
@@ -108,7 +109,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             interp_kind =str(shift_obj['interp_kind'])
 
         else:
-            print('Smile: Processor version not found.')
+            print('Smile: Processor version %s not found.' % version_str)
             apply_shift = False
 
     apply_coeff = False
@@ -118,7 +119,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         if 'coeffs_v%s' % version_str in coeff_obj.keys():
             coeff_arr = coeff_obj['coeffs_v%s' % version_str]
         else:
-            print('Rad coefficients: Processor version not found.')
+            print('Rad coefficients: Processor version %s not found.' % version_str)
             apply_coeff = False
 
 
