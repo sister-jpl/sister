@@ -60,7 +60,7 @@ def terrain_generate(longitude,latitude,elev_dir,temp_dir):
         retry = 0
         while (retry < 10) & (len(tiles) != 26450):
             tiles = pd.read_csv(elev_dir + 'tileList.txt',header = None).values.flatten()
-            retry+=1
+            retry+= 1
 
         if len(tiles) != 26450:
             raise ValueError('Failed to download tile list.')
@@ -102,7 +102,7 @@ def terrain_generate(longitude,latitude,elev_dir,temp_dir):
 
     logging.info('Merging DEM tiles')
     dem_file  = '%stemp_dem' % temp_dir
-    os.system('gdal_merge.py -o %s -of ENVI %sCopernicus_DSM*' % (dem_file,temp_dir))
+    os.system('gdal_merge.py -o %s -of GTiff %sCopernicus_DSM*' % (dem_file,temp_dir))
 
     zone,direction  = utm_zone(longitude, latitude)
     if direction == 'North':
@@ -114,7 +114,8 @@ def terrain_generate(longitude,latitude,elev_dir,temp_dir):
 
     dem_file_utm =  dem_file+'_utm'
 
-    os.system('gdalwarp -overwrite -t_srs %s -tr 30 30 -of ENVI %s %s ' % (out_crs, dem_file,dem_file_utm))
+    warp_command = 'gdalwarp -overwrite -t_srs %s -tr 30 30 -r near -of ENVI %s %s ' % (out_crs, dem_file,dem_file_utm)
+    os.system(warp_command)
 
     slope_file =  '%stemp_slope' % temp_dir
     aspect_file =  '%stemp_aspect' % temp_dir
