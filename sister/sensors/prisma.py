@@ -257,17 +257,9 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     utc_time = np.ones(geo['Longitude_VNIR'][:,:].shape[0]) *utc_time[:,np.newaxis]
     utc_time = utc_time[2:-2,2:-2]
 
-    # Solar geometries
-    '''Solar geometry is calculated based on the mean scene acquisition time
-    which varies by less than 5 seconds from start to end of the scene and is
-    computationally more efficient.
-    '''
     mjd2000_epoch = dt.datetime(2000,1, 1,)
     mjd2000_epoch = mjd2000_epoch.replace(tzinfo=dt.timezone.utc)
     mean_time = mjd2000_epoch + dt.timedelta(days=np.array(geo['Time'][:]).mean())
-
-    solar_az = solar.get_azimuth(geo['Latitude_VNIR'][:,:],geo['Longitude_VNIR'][:,:],mean_time)[2:-2,2:-2]
-    solar_zn = 90-solar.get_altitude(geo['Latitude_VNIR'][:,:],geo['Longitude_VNIR'][:,:],mean_time)[2:-2,2:-2]
 
     longitude= geo['Longitude_VNIR'][2:-2,2:-2]
     latitude= geo['Latitude_VNIR'][2:-2,2:-2]
@@ -421,6 +413,20 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         #Recalculate elevation with new coordinates
         logging.info('Rebuilding DEM')
         elevation,slope,aspect= terrain_generate(longitude,latitude,elev_dir,temp_dir)
+
+    # Solar geometries
+    '''Solar geometry is calculated based on the mean scene acquisition time
+    which varies by less than 5 seconds from start to end of the scene and is
+    computationally more efficient.
+    '''
+
+    #Calculate solar geometry
+    solar_az = solar.get_azimuth(geo['Latitude_VNIR'][:,:],geo['Longitude_VNIR'][:,:],mean_time)[2:-2,2:-2]
+    solar_zn = 90-solar.get_altitude(geo['Latitude_VNIR'][:,:],geo['Longitude_VNIR'][:,:],mean_time)[2:-2,2:-2]
+
+    # Recalculate sensor geometry with updated coordinates
+    sensor_zn,sensor_az = sensor_view_angles(sat_enu,
+                                             np.array([easting,northing,up]))
 
 
     # Export location datacube
