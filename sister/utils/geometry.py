@@ -22,7 +22,6 @@ import os
 from itertools import tee
 import logging
 import numpy as np
-from rtree import index
 from scipy.spatial import cKDTree
 from numba import jit
 import statsmodels.api as sm
@@ -32,6 +31,8 @@ from skimage.util import view_as_blocks
 import hytools as ht
 from hytools.io.envi import WriteENVI
 from scipy.stats import circmean
+from scipy.ndimage import binary_erosion
+
 
 #Temporary fix.....
 try:
@@ -40,14 +41,13 @@ except:
     print('Unable to import Google Earth Engine API')
 
 class Projector():
-    """Projector class"""
+    """Nearest Neighbor Projector class"""
 
     def __init__(self):
         self.tree = None
         self.indices = None
         self.pixel_size = None
         self.input_shape = None
-        self.inter_shape = None
         self.output_shape = None
 
         self.mask = None
@@ -57,43 +57,38 @@ class Projector():
         self.tree = cKDTree(coords,balanced_tree= False)
 
     def query_tree(self,ulx,uly,pixel_size):
-        half_pix = pixel_size/2
         self.pixel_size = pixel_size
 
-        lines = (uly-self.tree.mins[1])//half_pix
+        lines = (uly-self.tree.mins[1])//pixel_size
         if lines%2 !=0:
-            lines+=1
+            lines+=20
+        else:
+            lines+=19
 
-        columns = (self.tree.maxes[0]-ulx)//half_pix
+        columns = (self.tree.maxes[0]-ulx)//pixel_size
         if columns%2 !=0:
-            columns+=1
+            columns+=20
+        else:
+            columns+=19
 
-        self.inter_shape = (int(lines),int(columns))
-        int_north,int_east = np.indices(self.inter_shape)
-        int_east = (int_east*half_pix + ulx).flatten()
-        int_north = (uly-int_north*half_pix).flatten()
-        int_north= np.expand_dims(int_north,axis=1)
-        int_east= np.expand_dims(int_east,axis=1)
-        dest_points = np.concatenate([int_east,int_north],axis=1)
+        self.output_shape = (int(lines),int(columns))
+        north,east = np.indices(self.output_shape)
+        east = (east*pixel_size + ulx).flatten()
+        north = (uly-north*pixel_size).flatten()
+        north= np.expand_dims(north,axis=1)
+        east= np.expand_dims(east,axis=1)
+        dest_points = np.concatenate([east,north],axis=1)
 
         distances,self.indices =  self.tree.query(dest_points,k=1)
         self.indices = np.unravel_index(self.indices,self.input_shape)
-        distances =  distances.reshape(self.inter_shape)
-        self.mask = distances > 2*pixel_size
-        self.output_shape = (int(lines/2),int(columns/2))
+        self.distances =  distances.reshape(self.output_shape)
+        self.mask = ~binary_erosion(self.distances < pixel_size,
+                                   structure=np.ones((5,5)),
+                                   border_value=1)
 
-    def project_band(self,band,no_data,angular = False):
-        band = np.copy(band[self.indices[0],self.indices[1]].reshape(self.inter_shape))
-        band[self.mask] = np.nan
-        bins = view_as_blocks(band, (2,2))
-        if angular:
-            bins = np.radians(bins)
-            band = circmean(bins,axis=2,nan_policy = 'omit')
-            band = circmean(band,axis=2,nan_policy = 'omit')
-            band = np.degrees(band)
-        else:
-            band = np.nanmean(bins,axis=(2,3))
-        band[np.isnan(band)] = no_data
+    def project_band(self,band,no_data):
+        band = np.copy(band[self.indices[0],self.indices[1]].reshape(self.output_shape))
+        band[self.mask] = no_data
         return band
 
 
@@ -414,9 +409,8 @@ def get_landsat_image(longitude,latitude,month,max_cloud = 5,band=5,project = Tr
         values_prj = project.project_band(np.expand_dims(values.flatten(),axis=1),-9999)
         return values_prj,ulx,uly
 
-    else:
 
-        return values,lons,lats
+    return values,lons,lats
 
 
 def rotate_coords(x_i,y_i,x_p,y_p,theta):

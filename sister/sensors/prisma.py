@@ -42,7 +42,7 @@ from ..utils.misc import download_file
 home = os.path.expanduser("~")
 
 def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = False,
-                match=False,proj = False,res = 30):
+                match=False,proj = False):
     '''
     This function exports three files:
         *_rdn* : Merged and optionally shift corrected radiance cube
@@ -357,8 +357,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         project.query_tree(warp_east,warp_north,pixel_size)
 
         # Project independent variables
-        sensor_az_prj = project.project_band(sensor_az,-9999,angular=True)
-        sensor_zn_prj = project.project_band(sensor_zn,-9999,angular=True)
+        sensor_az_prj = project.project_band(sensor_az,-9999)
+        sensor_zn_prj = project.project_band(sensor_zn,-9999)
         elevation_prj = project.project_band(elevation.astype(np.float),-9999)
 
         radiance = ht.HyTools()
@@ -413,7 +413,6 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         #Recalculate elevation with new coordinates
         logging.info('Rebuilding DEM')
         elevation,slope,aspect= terrain_generate(longitude,latitude,elev_dir,temp_dir)
-
     # Solar geometries
     '''Solar geometry is calculated based on the mean scene acquisition time
     which varies by less than 5 seconds from start to end of the scene and is
@@ -461,17 +460,15 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         new_coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
                         np.expand_dims(northing.flatten(),axis=1)],axis=1)
 
+        res = 30
+
         project = Projector()
         project.create_tree(new_coords,easting.shape)
-        project.query_tree(easting.min()-100,northing.max()+100,30)
-
-        blocksize = int(res/30)
-        map_info = ['UTM', 1, 1, easting.min()-100 - (res/2), northing.max()+100 + (res/2),res,
+        project.query_tree(easting.min()-600,northing.max()+600,res)
+        map_info = ['UTM', 1, 1, easting.min()-600 - (res/2), northing.max()+600 + (res/2),res,
                            res,zone,direction, 'WGS-84' , 'units=Meters']
-        out_cols = int(blocksize* (project.output_shape[1]//blocksize))
-        out_lines = int(blocksize* (project.output_shape[0]//blocksize))
 
-        logging.info('Georeferencing datasets to %sm resolution' % res)
+        logging.info('Projecting datasets to WGS84 UTM at %sm resolution' % res)
         for file in ['rdn','loc','obs']:
             input_name = '%sPRS_%s_%s' % (temp_dir,base_name,file)
             hy_obj = ht.HyTools()
@@ -479,8 +476,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             iterator =hy_obj.iterate(by = 'band')
 
             out_header = hy_obj.get_header()
-            out_header['lines']= project.output_shape[0]//blocksize
-            out_header['samples']=project.output_shape[1]//blocksize
+            out_header['lines']=  project.output_shape[0]
+            out_header['samples']= project.output_shape[1]
             out_header['data ignore value'] = -9999
             out_header['map info'] = map_info
             out_header['start acquisition time'] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -492,22 +489,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             writer = WriteENVI(output_name,out_header)
 
             while not iterator.complete:
-                if (file == 'obs') & (iterator.current_band in [1,2,3,4,7]):
-                    angular = True
-                else:
-                    angular = False
-                band = project.project_band(iterator.read_next(),-9999,angular=angular)
-                band[band == -9999] = np.nan
-                bins =view_as_blocks(band[:out_lines,:out_cols], (blocksize,blocksize))
-
-                if angular:
-                    bins = np.radians(bins)
-                    band = circmean(bins,axis=2,nan_policy = 'omit')
-                    band = circmean(band,axis=2,nan_policy = 'omit')
-                    band = np.degrees(band)
-                else:
-                    band = np.nanmean(bins,axis=(2,3))
-
+                band = project.project_band(iterator.read_next(),-9999)
                 if file == 'rdn':
                     band[band<0] = 0
                 band[np.isnan(band)] = -9999
