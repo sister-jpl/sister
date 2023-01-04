@@ -233,14 +233,15 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
         rdn_header['byte order'] = 0
         rdn_header['no data value'] = -9999
         rdn_header['data type'] = 4
+
         writer = WriteENVI(rdn.file_name.replace('_unscale',''),rdn_header)
-        iterator =rdn.iterate(by = 'band')
+        iterator =rdn.iterate(by = 'line')
 
         while not iterator.complete:
-            band = np.copy(iterator.read_next()).astype(float)
-            band /= gains[iterator.current_band]
-            band[~rdn.mask['no_data']] = -9999
-            writer.write_band(band,iterator.current_band)
+            print(iterator.current_line)
+            line = iterator.read_next()/gains
+            line[~rdn.mask['no_data'][iterator.current_line],:] = -9999
+            writer.write_line(line,iterator.current_line)
 
     loc_ort_file = loc_file+'_ort'
 
