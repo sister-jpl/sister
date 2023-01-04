@@ -255,7 +255,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     v_dhour = np.vectorize(dhour)
     utc_time = v_dhour(np.array(geo['Time'][:]))
     utc_time = np.ones(geo['Longitude_VNIR'][:,:].shape[0]) *utc_time[:,np.newaxis]
-    utc_time = utc_time[2:-2,2:-2]
+    utc_time = np.rot90(utc_time[2:-2,2:-2] ,k=1)
 
     mjd2000_epoch = dt.datetime(2000,1, 1,)
     mjd2000_epoch = mjd2000_epoch.replace(tzinfo=dt.timezone.utc)
@@ -444,7 +444,6 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     obs_export(obs_file,path,sensor_az,sensor_zn,
                solar_az,solar_zn,phase,slope,aspect,
                cosine_i,utc_time)
-
 
     # Get image bounds coordinates
     corner_1 = [longitude[0,0],  latitude[0,0]]
