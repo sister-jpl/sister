@@ -259,14 +259,14 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
     for file in [obs_ort_file,rdn_file,loc_ort_file]:
 
         if 'loc' in file:
-            product = 'LOC'
+            product = '_LOC'
         elif 'obs' in file:
-            product = 'OBS'
+            product = '_OBS'
         else:
-            product = 'RDN'
+            product = ''
 
-        new_file = "%s/SISTER_%s_%s_L1B_%s_000" % (os.path.dirname(file),instrument,datetime,product)
-        new_file_hdr = new_file+ '.hdr'
+        new_file = "%s/SISTER_%s_L1B_RDN_%s_CRID%s.bin" % (os.path.dirname(file),instrument,datetime,product)
+        new_file_hdr = new_file.replace('.bin','.hdr')
 
         os.rename(file,new_file)
         os.rename(file+ '.hdr',new_file_hdr)
