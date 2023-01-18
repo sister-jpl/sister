@@ -247,14 +247,9 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
 
     #Get spatial and temporal extents of dataset
     start_delta,end_delta = get_temporal_extent(obs_ort_file)
-    start_time =date+start_delta
-    end_time =date+end_delta
+    start_time = date+start_delta
+    end_time = date+end_delta
     datetime = start_time.strftime('%Y%m%dT%H%M%S')
-
-    out_dir = "%s/SISTER_%s_%s_L1B_RDN_000/" % (out_dir,instrument,datetime)
-
-    if not os.path.isdir(out_dir):
-        os.mkdir(out_dir)
 
     for file in [obs_ort_file,rdn_file,loc_ort_file]:
 
@@ -284,18 +279,18 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
         clean_header['map info'] =  header['map info']
         clean_header['sensor type'] =instrument
 
-        if product == 'RDN':
+        if product == '':
             clean_header['description'] = 'Radiance micro-watts/cm^2/nm/sr'
             clean_header['wavelength'] =  header['wavelength']
             clean_header['fwhm'] =  header['fwhm']
             clean_header['wavelength units'] =  'nanometers'
-        elif product == 'OBS':
+        elif product == '_OBS':
             clean_header['description'] = 'Observation datacube'
             clean_header['band names'] = ['path length','to-sensor azimuth',
                                           'to-sensor zenith','to-sun azimuth',
                                           'to-sun zenith','phase','slope','aspect',
                                           'cosine i','UTC time']
-        elif product == 'LOC':
+        elif product == '_LOC':
             clean_header['description'] = 'Location datacube'
             clean_header['band names'] = ['longitude','latitude','elevation']
 

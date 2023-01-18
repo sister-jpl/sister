@@ -423,7 +423,7 @@ def rotate_coords(x_i,y_i,x_p,y_p,theta):
 
 
 
-def resample(in_file,out_dir,resolution,verbose = True, unrotate = False):
+def resample(in_file,out_dir,resolution,kind = 'closest', verbose = True, unrotate = False):
     ''' Perform a two-step spatial resampling to . First, pixels are aggregated and
     averaged, next a nearest neighbor algorithm is used to resample images to resolution.
     '''
