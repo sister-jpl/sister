@@ -238,7 +238,6 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
         iterator =rdn.iterate(by = 'line')
 
         while not iterator.complete:
-            print(iterator.current_line)
             line = iterator.read_next()/gains
             line[~rdn.mask['no_data'][iterator.current_line],:] = -9999
             writer.write_line(line,iterator.current_line)
