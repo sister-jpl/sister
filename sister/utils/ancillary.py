@@ -26,7 +26,7 @@ def loc_export(loc_file,longitude,latitude,elevation):
     '''Export location datasets to disk
     '''
     loc_header = envi_header_dict()
-    loc_header['desciption']= 'Location datacube'
+    loc_header['description']= 'Location datacube'
     loc_header['lines']= longitude.shape[0]
     loc_header['samples']= longitude.shape[1]
     loc_header['bands']= 3
