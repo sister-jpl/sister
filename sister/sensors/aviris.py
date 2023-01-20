@@ -113,7 +113,6 @@ def get_temporal_extent(obs_ort_file):
     Get image acquisition start and end time
     '''
 
-
     obs = ht.HyTools()
     obs.read_file(obs_ort_file,'envi')
 
@@ -128,7 +127,6 @@ def get_temporal_extent(obs_ort_file):
                                 minutes = start_minute,
                                 seconds = start_second)
 
-
     utm_time = obs.get_band(9)
     end_time = utm_time[utm_time != obs.no_data].max()
     end_hour = int(end_time)
@@ -141,7 +139,6 @@ def get_temporal_extent(obs_ort_file):
                                 seconds = end_second)
 
     return start_delta,end_delta
-
 
 def preprocess(input_tar,out_dir,temp_dir,res = 0):
     '''
