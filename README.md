@@ -52,7 +52,7 @@ three ENVI formated files:
 2. Location datacube (longitude, latitude, altitude)
 3. Observables datacube (sensor, solar geometry......)
 
-[PRISMA Algorithm Workflow](https://raw.githubusercontent.com/EnSpec/sister/master/figures/prisma_workflow.svg)
+[PRISMA Algorithm Workflow](https://raw.githubusercontent.com/EnSpec/sister/sister-dev/figures/prisma_workflow.svg)
 
 ```python
 
@@ -65,12 +65,12 @@ temp_dir =  '/data/temp/'
 elev_dir = https://copernicus-dem-30m.s3.amazonaws.com/
 
 prisma.he5_to_envi(l1_zip,
-					out_dir,
-					temp_dir,
-					elev_dir,
-					shift = './data/prisma/PRISMA_Mali1_wavelength_shift_surface_smooth.npz',
-					rad_coeff = './data/prisma/PRS_Mali1_radcoeff_surface.npz',
-					match= True,
-					proj = True)
+			out_dir,
+			temp_dir,
+			elev_dir,
+			shift = './data/prisma/PRISMA_Mali1_wavelength_shift_surface_smooth.npz',
+			rad_coeff = './data/prisma/PRS_Mali1_radcoeff_surface.npz',
+			match= True,
+			proj = True)
 
 ```
