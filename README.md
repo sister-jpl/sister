@@ -14,32 +14,22 @@ We recommend installing the libary and its dependencies in a conda environment.
 
 To create and activate a new environment run:
 ```bash
-conda create -n sister python=3.7
-
+conda create -n sister python=3.8
 source activate sister
 ```
 
 Next install gdal:
 ```bash
-conda install -c conda-forge gdal
+conda install  gdal
 ```
 
 To install the library, clone:
 ```bash
 git clone https://github.com/EnSpec/sister.git
 ```
-and run setuptools:
+and install with pip:
 ```bash
-python setup.py install
-```
-
-If you run into dependency errors with 'ray' try uninstalling:
-```bash
-pip uninstall ray
-```
-and reinstalling with the following command:
-```bash
-pip install 'ray[default]'
+pip install ./sister
 ```
 
 ### Examples
