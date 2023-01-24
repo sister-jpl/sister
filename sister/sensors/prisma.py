@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import datetime as dt
-import importlib
 import logging
 import os
 import zipfile
@@ -32,7 +31,6 @@ from hytools.topo.topo import calc_cosine_i
 import numpy as np
 from scipy.interpolate import interp1d
 from pysolar import solar
-from skimage.util import view_as_blocks
 from scipy.ndimage import uniform_filter
 from ..utils.terrain import *
 from ..utils.geometry import *
@@ -71,21 +69,20 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     rad_coeff (bool) : Apply radiometric correction coefficients file
     match (bool or string) : Perform landsat image matching, if string path to reference file
     proj (bool) : Project image to UTM grid
-    res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)
     '''
 
     base_name = os.path.basename(l1_zip)[16:-4]
-    out_dir = "%s/PRS_%s/" % (out_dir,base_name)
+    out_dir = f'{out_dir}/PRS_{base_name}/'
 
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
 
-    logging.basicConfig(filename='%s/PRS_%s.log' % (out_dir,base_name),
+    logging.basicConfig(filename= f'{out_dir}/PRS_{base_name}.log',
             format='%(asctime)s: %(levelname)s - %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S',
             level=logging.NOTSET)
 
-    temp_dir = '%s/tmpPRS_%s/'% (temp_dir,base_name)
+    temp_dir = f'{temp_dir}/tmpPRS_{base_name}/'
     if not os.path.isdir(temp_dir):
         os.mkdir(temp_dir)
 
@@ -94,7 +91,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     with zipfile.ZipFile(l1_zip,'r') as zipped:
         zipped.extractall(temp_dir)
 
-    l1_obj = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
+    l1_obj = h5py.File(f'{temp_dir}/PRS_L1_STD_OFFL_{base_name}.he5','r')
     version = l1_obj.attrs['Processor_Version'].decode('UTF-8')
     version_str = version.replace('.','').replace('-','')
 
@@ -104,34 +101,34 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     if shift:
         apply_shift = True
         shift_obj = np.load(shift)
-        if 'shifts_v%s' % version_str in shift_obj.keys():
-            shift_surface = shift_obj['shifts_v%s' % version_str]
+        if f'shifts_v{version_str}' in shift_obj.keys():
+            shift_surface = shift_obj[f'shifts_v{version_str}']
             interp_kind =str(shift_obj['interp_kind'])
 
         else:
-            print('Smile: Processor version %s not found.' % version_str)
+            print(f'Smile: Processor version {version_str} not found.')
             apply_shift = False
 
     apply_coeff = False
     if rad_coeff:
         apply_coeff = True
         coeff_obj = np.load(rad_coeff)
-        if 'coeffs_v%s' % version_str in coeff_obj.keys():
-            coeff_arr = coeff_obj['coeffs_v%s' % version_str]
+        if f'coeffs_v{version_str}' in coeff_obj.keys():
+            coeff_arr = coeff_obj[f'coeffs_v{version_str}']
         else:
-            print('Rad coefficients: Processor version %s not found.' % version_str)
+            print(f'Rad coefficients: Processor version {version_str} not found.')
             apply_coeff = False
 
 
     #Define output paths
     if proj:
-        rdn_file = '%sPRS_%s_rdn' % (temp_dir,base_name)
-        loc_file = '%sPRS_%s_loc' % (temp_dir,base_name)
-        obs_file = '%sPRS_%s_obs' % (temp_dir,base_name)
+        rdn_file = f'{temp_dir}/PRS_{base_name}_rdn'
+        loc_file = f'{temp_dir}/PRS_{base_name}_loc'
+        obs_file = f'{temp_dir}/PRS_{base_name}_obs'
     else:
-        rdn_file = '%sPRS_%s_rdn' % (out_dir,base_name)
-        loc_file = '%sPRS_%s_loc' % (out_dir,base_name)
-        obs_file = '%sPRS_%s_obs' % (out_dir,base_name)
+        rdn_file = f'{out_dir}/PRS_{base_name}_rdn'
+        loc_file = f'{out_dir}/PRS_{base_name}_loc'
+        obs_file = f'{out_dir}/PRS_{base_name}_obs'
 
     measurement = 'rdn'
     logging.info('Exporting radiance data')
@@ -151,7 +148,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     rdn_dict['data type'] = 12
     rdn_dict['wavelength units'] = "nanometers"
     rdn_dict['byte order'] = 0
-    vnir_temp = '%sPRS_%s_%s_vnir' % (temp_dir,base_name,measurement)
+    vnir_temp = f'{temp_dir}/PRS_{base_name}_{measurement}_vnir'
 
     writer = WriteENVI(vnir_temp,rdn_dict )
     writer.write_chunk(np.moveaxis(vnir_data[:,:,:],1,2), 0,0)
@@ -166,7 +163,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     rdn_dict['bands']=  swir_data.shape[1]
     rdn_dict['wavelength']= swir_waves
     rdn_dict['fwhm']= swir_fwhm
-    swir_temp = '%sPRS_%s_%s_swir' % (temp_dir,base_name,measurement)
+    swir_temp = f'{temp_dir}/PRS_{base_name}_{measurement}_swir'
 
     writer = WriteENVI(swir_temp,rdn_dict )
     writer.write_chunk(np.moveaxis(swir_data[:,:,:],1,2), 0,0)
@@ -184,7 +181,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     swir_obj.read_file(swir_temp, 'envi')
 
     rdn_dict  = envi_header_dict()
-    rdn_dict ['description'] = "Radiance v%s micro-watts/cm^2/nm/sr" % version
+    rdn_dict ['description'] = f"Radiance v{version} micro-watts/cm^2/nm/sr"
     rdn_dict ['lines']= vnir_obj.lines-4 #Clip edges of array
     rdn_dict ['samples']=vnir_obj.columns-4  #Clip edges of array
     rdn_dict ['bands']= len(vnir_waves.tolist() + swir_waves.tolist())
@@ -265,7 +262,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     latitude= geo['Latitude_VNIR'][2:-2,2:-2]
 
     #Create initial terrain datsets
-    elevation,slope,aspect= terrain_generate(longitude,latitude,elev_dir,temp_dir)
+    elevation,slope,aspect = terrain_generate(longitude,latitude,elev_dir,temp_dir)
     zone,direction = utm_zone(longitude,latitude)
 
     # Calculate satellite X,Y,Z position for each line
@@ -312,7 +309,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     # Interpolate x,y,z satelite positions
     sat_xyz = []
     for sat_pos in ['x','y','z']:
-        sat_p = np.array(pvs['Wgs84_pos_%s' % sat_pos][:])
+        sat_p = np.array(pvs[f'Wgs84_pos_{sat_pos}'][:])
         sat_slope, intercept = np.linalg.lstsq(X,sat_p,rcond=-1)[0].flatten()
         sat_p_linear = sat_slope*measurements+ intercept
         interpolator = interp1d(sat_t_linear,sat_p_linear,
@@ -331,7 +328,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     satellite_df['lat'] = sat_lat
     satellite_df['lon'] = sat_lon
     satellite_df['alt'] = sat_alt
-    satellite_df.to_csv('%sPRS_%s_satellite_loc.csv' % (out_dir,base_name))
+    satellite_df.to_csv(f'{out_dir}/PRS_{base_name}_satellite_loc.csv')
 
     # Convert satellite coords to local ENU
     sat_enu  = np.array(dda2utm(sat_lon,sat_lat,sat_alt,
@@ -469,7 +466,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
 
         logging.info('Projecting datasets to WGS84 UTM at %sm resolution' % res)
         for file in ['rdn','loc','obs']:
-            input_name = '%sPRS_%s_%s' % (temp_dir,base_name,file)
+            input_name = f'{temp_dir}/PRS_{base_name}_{file}'
             hy_obj = ht.HyTools()
             hy_obj.read_file(input_name, 'envi')
             iterator =hy_obj.iterate(by = 'band')
@@ -484,7 +481,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             out_header['bounding box'] =[corner_1,corner_2,corner_3,corner_4]
             out_header['sensor type'] ='PRISMA'
 
-            output_name = '%sPRS_%s_%s_prj' % (out_dir,base_name,file)
+            output_name = f'{out_dir}/PRS_{base_name}_{file}_prj'
             writer = WriteENVI(output_name,out_header)
 
             while not iterator.complete:
