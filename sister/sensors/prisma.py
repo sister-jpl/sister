@@ -461,8 +461,25 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         project = Projector()
         project.create_tree(new_coords,easting.shape)
         project.query_tree(easting.min()-600,northing.max()+600,res)
-        map_info = ['UTM', 1, 1, easting.min()-600 - (res/2), northing.max()+600 + (res/2),res,
-                           res,zone,direction, 'WGS-84' , 'units=Meters']
+
+        no_data_mask = project.project_band(np.zeros(project.output_shape),-9999) == -9999
+        start_col = np.argwhere(no_data_mask.sum(axis=0) != project.output_shape[0])[0][0]
+        end_col = start_col + len(np.argwhere(no_data_mask.sum(axis=0) != project.output_shape[0]))
+
+        start_line = np.argwhere(no_data_mask.sum(axis=1) != project.output_shape[1])[0][0]
+        end_line = start_line + len(np.argwhere(no_data_mask.sum(axis=1) != project.output_shape[1]))
+
+        map_info = ['UTM',
+                    1,
+                    1,
+                    easting.min()-600 - (res/2) + res*start_col,
+                    northing.max()+600 + (res/2) - res*start_line,
+                    res,
+                    res,
+                    zone,
+                    direction,
+                    'WGS-84' ,
+                    'units=Meters']
 
         logging.info('Projecting datasets to WGS84 UTM at %sm resolution' % res)
         for file in ['rdn','loc','obs']:
@@ -472,8 +489,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             iterator =hy_obj.iterate(by = 'band')
 
             out_header = hy_obj.get_header()
-            out_header['lines']=  project.output_shape[0]
-            out_header['samples']= project.output_shape[1]
+            out_header['lines']=  end_line - start_line
+            out_header['samples']= end_col - start_col
             out_header['data ignore value'] = -9999
             out_header['map info'] = map_info
             out_header['start acquisition time'] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -487,9 +504,9 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             while not iterator.complete:
                 band = project.project_band(iterator.read_next(),-9999)
                 if file == 'rdn':
-                    band[band<0] = 0
+                    band[(band<0) & (band>-9999)] = 0
                 band[np.isnan(band)] = -9999
-                writer.write_band(band,iterator.current_band)
+                writer.write_band(band[start_line:end_line,start_col:end_col],iterator.current_band)
 
     logging.info('Deleting temporary files')
     shutil.rmtree(temp_dir)
