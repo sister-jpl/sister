@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import datetime as dt
-import importlib
 import logging
 import os
 import zipfile
@@ -32,7 +31,6 @@ from hytools.topo.topo import calc_cosine_i
 import numpy as np
 from scipy.interpolate import interp1d
 from pysolar import solar
-from skimage.util import view_as_blocks
 from scipy.ndimage import uniform_filter
 from ..utils.terrain import *
 from ..utils.geometry import *
@@ -42,7 +40,7 @@ from ..utils.misc import download_file
 home = os.path.expanduser("~")
 
 def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = False,
-                match=False,proj = False,res = 30):
+                match=False,proj = False):
     '''
     This function exports three files:
         *_rdn* : Merged and optionally shift corrected radiance cube
@@ -71,21 +69,20 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     rad_coeff (bool) : Apply radiometric correction coefficients file
     match (bool or string) : Perform landsat image matching, if string path to reference file
     proj (bool) : Project image to UTM grid
-    res (int) : Resolution of projected image, 30 should be one of its factors (90,120,150.....)
     '''
 
     base_name = os.path.basename(l1_zip)[16:-4]
-    out_dir = "%s/PRS_%s/" % (out_dir,base_name)
+    out_dir = f'{out_dir}/PRS_{base_name}/'
 
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
 
-    logging.basicConfig(filename='%s/PRS_%s.log' % (out_dir,base_name),
+    logging.basicConfig(filename= f'{out_dir}/PRS_{base_name}.log',
             format='%(asctime)s: %(levelname)s - %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S',
             level=logging.NOTSET)
 
-    temp_dir = '%s/tmpPRS_%s/'% (temp_dir,base_name)
+    temp_dir = f'{temp_dir}/tmpPRS_{base_name}/'
     if not os.path.isdir(temp_dir):
         os.mkdir(temp_dir)
 
@@ -94,7 +91,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     with zipfile.ZipFile(l1_zip,'r') as zipped:
         zipped.extractall(temp_dir)
 
-    l1_obj = h5py.File('%sPRS_L1_STD_OFFL_%s.he5' % (temp_dir,base_name),'r')
+    l1_obj = h5py.File(f'{temp_dir}/PRS_L1_STD_OFFL_{base_name}.he5','r')
     version = l1_obj.attrs['Processor_Version'].decode('UTF-8')
     version_str = version.replace('.','').replace('-','')
 
@@ -104,34 +101,34 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     if shift:
         apply_shift = True
         shift_obj = np.load(shift)
-        if 'shifts_v%s' % version_str in shift_obj.keys():
-            shift_surface = shift_obj['shifts_v%s' % version_str]
+        if f'shifts_v{version_str}' in shift_obj.keys():
+            shift_surface = shift_obj[f'shifts_v{version_str}']
             interp_kind =str(shift_obj['interp_kind'])
 
         else:
-            print('Smile: Processor version %s not found.' % version_str)
+            print(f'Smile: Processor version {version_str} not found.')
             apply_shift = False
 
     apply_coeff = False
     if rad_coeff:
         apply_coeff = True
         coeff_obj = np.load(rad_coeff)
-        if 'coeffs_v%s' % version_str in coeff_obj.keys():
-            coeff_arr = coeff_obj['coeffs_v%s' % version_str]
+        if f'coeffs_v{version_str}' in coeff_obj.keys():
+            coeff_arr = coeff_obj[f'coeffs_v{version_str}']
         else:
-            print('Rad coefficients: Processor version %s not found.' % version_str)
+            print(f'Rad coefficients: Processor version {version_str} not found.')
             apply_coeff = False
 
 
     #Define output paths
     if proj:
-        rdn_file = '%sPRS_%s_rdn' % (temp_dir,base_name)
-        loc_file = '%sPRS_%s_loc' % (temp_dir,base_name)
-        obs_file = '%sPRS_%s_obs' % (temp_dir,base_name)
+        rdn_file = f'{temp_dir}/PRS_{base_name}_rdn'
+        loc_file = f'{temp_dir}/PRS_{base_name}_loc'
+        obs_file = f'{temp_dir}/PRS_{base_name}_obs'
     else:
-        rdn_file = '%sPRS_%s_rdn' % (out_dir,base_name)
-        loc_file = '%sPRS_%s_loc' % (out_dir,base_name)
-        obs_file = '%sPRS_%s_obs' % (out_dir,base_name)
+        rdn_file = f'{out_dir}/PRS_{base_name}_rdn'
+        loc_file = f'{out_dir}/PRS_{base_name}_loc'
+        obs_file = f'{out_dir}/PRS_{base_name}_obs'
 
     measurement = 'rdn'
     logging.info('Exporting radiance data')
@@ -151,7 +148,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     rdn_dict['data type'] = 12
     rdn_dict['wavelength units'] = "nanometers"
     rdn_dict['byte order'] = 0
-    vnir_temp = '%sPRS_%s_%s_vnir' % (temp_dir,base_name,measurement)
+    vnir_temp = f'{temp_dir}/PRS_{base_name}_{measurement}_vnir'
 
     writer = WriteENVI(vnir_temp,rdn_dict )
     writer.write_chunk(np.moveaxis(vnir_data[:,:,:],1,2), 0,0)
@@ -166,7 +163,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     rdn_dict['bands']=  swir_data.shape[1]
     rdn_dict['wavelength']= swir_waves
     rdn_dict['fwhm']= swir_fwhm
-    swir_temp = '%sPRS_%s_%s_swir' % (temp_dir,base_name,measurement)
+    swir_temp = f'{temp_dir}/PRS_{base_name}_{measurement}_swir'
 
     writer = WriteENVI(swir_temp,rdn_dict )
     writer.write_chunk(np.moveaxis(swir_data[:,:,:],1,2), 0,0)
@@ -184,7 +181,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     swir_obj.read_file(swir_temp, 'envi')
 
     rdn_dict  = envi_header_dict()
-    rdn_dict ['description'] = "Radiance v%s micro-watts/cm^2/nm/sr" % version
+    rdn_dict ['description'] = f"Radiance v{version} micro-watts/cm^2/nm/sr"
     rdn_dict ['lines']= vnir_obj.lines-4 #Clip edges of array
     rdn_dict ['samples']=vnir_obj.columns-4  #Clip edges of array
     rdn_dict ['bands']= len(vnir_waves.tolist() + swir_waves.tolist())
@@ -255,25 +252,17 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     v_dhour = np.vectorize(dhour)
     utc_time = v_dhour(np.array(geo['Time'][:]))
     utc_time = np.ones(geo['Longitude_VNIR'][:,:].shape[0]) *utc_time[:,np.newaxis]
-    utc_time = utc_time[2:-2,2:-2]
+    utc_time = np.rot90(utc_time[2:-2,2:-2] ,k=1)
 
-    # Solar geometries
-    '''Solar geometry is calculated based on the mean scene acquisition time
-    which varies by less than 5 seconds from start to end of the scene and is
-    computationally more efficient.
-    '''
     mjd2000_epoch = dt.datetime(2000,1, 1,)
     mjd2000_epoch = mjd2000_epoch.replace(tzinfo=dt.timezone.utc)
     mean_time = mjd2000_epoch + dt.timedelta(days=np.array(geo['Time'][:]).mean())
-
-    solar_az = solar.get_azimuth(geo['Latitude_VNIR'][:,:],geo['Longitude_VNIR'][:,:],mean_time)[2:-2,2:-2]
-    solar_zn = 90-solar.get_altitude(geo['Latitude_VNIR'][:,:],geo['Longitude_VNIR'][:,:],mean_time)[2:-2,2:-2]
 
     longitude= geo['Longitude_VNIR'][2:-2,2:-2]
     latitude= geo['Latitude_VNIR'][2:-2,2:-2]
 
     #Create initial terrain datsets
-    elevation,slope,aspect= terrain_generate(longitude,latitude,elev_dir,temp_dir)
+    elevation,slope,aspect = terrain_generate(longitude,latitude,elev_dir,temp_dir)
     zone,direction = utm_zone(longitude,latitude)
 
     # Calculate satellite X,Y,Z position for each line
@@ -320,7 +309,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     # Interpolate x,y,z satelite positions
     sat_xyz = []
     for sat_pos in ['x','y','z']:
-        sat_p = np.array(pvs['Wgs84_pos_%s' % sat_pos][:])
+        sat_p = np.array(pvs[f'Wgs84_pos_{sat_pos}'][:])
         sat_slope, intercept = np.linalg.lstsq(X,sat_p,rcond=-1)[0].flatten()
         sat_p_linear = sat_slope*measurements+ intercept
         interpolator = interp1d(sat_t_linear,sat_p_linear,
@@ -339,7 +328,7 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     satellite_df['lat'] = sat_lat
     satellite_df['lon'] = sat_lon
     satellite_df['alt'] = sat_alt
-    satellite_df.to_csv('%sPRS_%s_satellite_loc.csv' % (out_dir,base_name))
+    satellite_df.to_csv(f'{out_dir}/PRS_{base_name}_satellite_loc.csv')
 
     # Convert satellite coords to local ENU
     sat_enu  = np.array(dda2utm(sat_lon,sat_lat,sat_alt,
@@ -365,8 +354,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         project.query_tree(warp_east,warp_north,pixel_size)
 
         # Project independent variables
-        sensor_az_prj = project.project_band(sensor_az,-9999,angular=True)
-        sensor_zn_prj = project.project_band(sensor_zn,-9999,angular=True)
+        sensor_az_prj = project.project_band(sensor_az,-9999)
+        sensor_zn_prj = project.project_band(sensor_zn,-9999)
         elevation_prj = project.project_band(elevation.astype(np.float),-9999)
 
         radiance = ht.HyTools()
@@ -421,6 +410,19 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         #Recalculate elevation with new coordinates
         logging.info('Rebuilding DEM')
         elevation,slope,aspect= terrain_generate(longitude,latitude,elev_dir,temp_dir)
+    # Solar geometries
+    '''Solar geometry is calculated based on the mean scene acquisition time
+    which varies by less than 5 seconds from start to end of the scene and is
+    computationally more efficient.
+    '''
+
+    #Calculate solar geometry
+    solar_az = solar.get_azimuth(geo['Latitude_VNIR'][:,:],geo['Longitude_VNIR'][:,:],mean_time)[2:-2,2:-2]
+    solar_zn = 90-solar.get_altitude(geo['Latitude_VNIR'][:,:],geo['Longitude_VNIR'][:,:],mean_time)[2:-2,2:-2]
+
+    # Recalculate sensor geometry with updated coordinates
+    sensor_zn,sensor_az = sensor_view_angles(sat_enu,
+                                             np.array([easting,northing,up]))
 
 
     # Export location datacube
@@ -440,7 +442,6 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
                solar_az,solar_zn,phase,slope,aspect,
                cosine_i,utc_time)
 
-
     # Get image bounds coordinates
     corner_1 = [longitude[0,0],  latitude[0,0]]
     corner_2 = [longitude[0,-1], latitude[0,-1]]
@@ -455,26 +456,41 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
         new_coords =np.concatenate([np.expand_dims(easting.flatten(),axis=1),
                         np.expand_dims(northing.flatten(),axis=1)],axis=1)
 
+        res = 30
+
         project = Projector()
         project.create_tree(new_coords,easting.shape)
-        project.query_tree(easting.min()-100,northing.max()+100,30)
+        project.query_tree(easting.min()-600,northing.max()+600,res)
 
-        blocksize = int(res/30)
-        map_info = ['UTM', 1, 1, easting.min()-100 - (res/2), northing.max()+100 + (res/2),res,
-                           res,zone,direction, 'WGS-84' , 'units=Meters']
-        out_cols = int(blocksize* (project.output_shape[1]//blocksize))
-        out_lines = int(blocksize* (project.output_shape[0]//blocksize))
+        no_data_mask = project.project_band(np.zeros(project.output_shape),-9999) == -9999
+        start_col = np.argwhere(no_data_mask.sum(axis=0) != project.output_shape[0])[0][0]
+        end_col = start_col + len(np.argwhere(no_data_mask.sum(axis=0) != project.output_shape[0]))
 
-        logging.info('Georeferencing datasets to %sm resolution' % res)
+        start_line = np.argwhere(no_data_mask.sum(axis=1) != project.output_shape[1])[0][0]
+        end_line = start_line + len(np.argwhere(no_data_mask.sum(axis=1) != project.output_shape[1]))
+
+        map_info = ['UTM',
+                    1,
+                    1,
+                    easting.min()-600 - (res/2) + res*start_col,
+                    northing.max()+600 + (res/2) - res*start_line,
+                    res,
+                    res,
+                    zone,
+                    direction,
+                    'WGS-84' ,
+                    'units=Meters']
+
+        logging.info('Projecting datasets to WGS84 UTM at %sm resolution' % res)
         for file in ['rdn','loc','obs']:
-            input_name = '%sPRS_%s_%s' % (temp_dir,base_name,file)
+            input_name = f'{temp_dir}/PRS_{base_name}_{file}'
             hy_obj = ht.HyTools()
             hy_obj.read_file(input_name, 'envi')
             iterator =hy_obj.iterate(by = 'band')
 
             out_header = hy_obj.get_header()
-            out_header['lines']= project.output_shape[0]//blocksize
-            out_header['samples']=project.output_shape[1]//blocksize
+            out_header['lines']=  end_line - start_line
+            out_header['samples']= end_col - start_col
             out_header['data ignore value'] = -9999
             out_header['map info'] = map_info
             out_header['start acquisition time'] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -482,30 +498,15 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             out_header['bounding box'] =[corner_1,corner_2,corner_3,corner_4]
             out_header['sensor type'] ='PRISMA'
 
-            output_name = '%sPRS_%s_%s_prj' % (out_dir,base_name,file)
+            output_name = f'{out_dir}/PRS_{base_name}_{file}_prj'
             writer = WriteENVI(output_name,out_header)
 
             while not iterator.complete:
-                if (file == 'obs') & (iterator.current_band in [1,2,3,4,7]):
-                    angular = True
-                else:
-                    angular = False
-                band = project.project_band(iterator.read_next(),-9999,angular=angular)
-                band[band == -9999] = np.nan
-                bins =view_as_blocks(band[:out_lines,:out_cols], (blocksize,blocksize))
-
-                if angular:
-                    bins = np.radians(bins)
-                    band = circmean(bins,axis=2,nan_policy = 'omit')
-                    band = circmean(band,axis=2,nan_policy = 'omit')
-                    band = np.degrees(band)
-                else:
-                    band = np.nanmean(bins,axis=(2,3))
-
+                band = project.project_band(iterator.read_next(),-9999)
                 if file == 'rdn':
-                    band[band<0] = 0
+                    band[(band<0) & (band>-9999)] = 0
                 band[np.isnan(band)] = -9999
-                writer.write_band(band,iterator.current_band)
+                writer.write_band(band[start_line:end_line,start_col:end_col],iterator.current_band)
 
     logging.info('Deleting temporary files')
     shutil.rmtree(temp_dir)

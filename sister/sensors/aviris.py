@@ -113,7 +113,6 @@ def get_temporal_extent(obs_ort_file):
     Get image acquisition start and end time
     '''
 
-
     obs = ht.HyTools()
     obs.read_file(obs_ort_file,'envi')
 
@@ -128,7 +127,6 @@ def get_temporal_extent(obs_ort_file):
                                 minutes = start_minute,
                                 seconds = start_second)
 
-
     utm_time = obs.get_band(9)
     end_time = utm_time[utm_time != obs.no_data].max()
     end_hour = int(end_time)
@@ -141,7 +139,6 @@ def get_temporal_extent(obs_ort_file):
                                 seconds = end_second)
 
     return start_delta,end_delta
-
 
 def preprocess(input_tar,out_dir,temp_dir,res = 0):
     '''
@@ -233,39 +230,34 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
         rdn_header['byte order'] = 0
         rdn_header['no data value'] = -9999
         rdn_header['data type'] = 4
+
         writer = WriteENVI(rdn.file_name.replace('_unscale',''),rdn_header)
-        iterator =rdn.iterate(by = 'band')
+        iterator =rdn.iterate(by = 'line')
 
         while not iterator.complete:
-            band = np.copy(iterator.read_next()).astype(float)
-            band /= gains[iterator.current_band]
-            band[~rdn.mask['no_data']] = -9999
-            writer.write_band(band,iterator.current_band)
+            line = iterator.read_next()/gains
+            line[~rdn.mask['no_data'][iterator.current_line],:] = -9999
+            writer.write_line(line,iterator.current_line)
 
     loc_ort_file = loc_file+'_ort'
 
     #Get spatial and temporal extents of dataset
     start_delta,end_delta = get_temporal_extent(obs_ort_file)
-    start_time =date+start_delta
-    end_time =date+end_delta
+    start_time = date+start_delta
+    end_time = date+end_delta
     datetime = start_time.strftime('%Y%m%dT%H%M%S')
-
-    out_dir = "%s/SISTER_%s_%s_L1B_RDN_000/" % (out_dir,instrument,datetime)
-
-    if not os.path.isdir(out_dir):
-        os.mkdir(out_dir)
 
     for file in [obs_ort_file,rdn_file,loc_ort_file]:
 
         if 'loc' in file:
-            product = 'LOC'
+            product = '_LOC'
         elif 'obs' in file:
-            product = 'OBS'
+            product = '_OBS'
         else:
-            product = 'RDN'
+            product = ''
 
-        new_file = "%s/SISTER_%s_%s_L1B_%s_000" % (os.path.dirname(file),instrument,datetime,product)
-        new_file_hdr = new_file+ '.hdr'
+        new_file = "%s/SISTER_%s_L1B_RDN_%s_CRID%s.bin" % (os.path.dirname(file),instrument,datetime,product)
+        new_file_hdr = new_file.replace('.bin','.hdr')
 
         os.rename(file,new_file)
         os.rename(file+ '.hdr',new_file_hdr)
@@ -283,18 +275,18 @@ def preprocess(input_tar,out_dir,temp_dir,res = 0):
         clean_header['map info'] =  header['map info']
         clean_header['sensor type'] =instrument
 
-        if product == 'RDN':
+        if product == '':
             clean_header['description'] = 'Radiance micro-watts/cm^2/nm/sr'
             clean_header['wavelength'] =  header['wavelength']
             clean_header['fwhm'] =  header['fwhm']
             clean_header['wavelength units'] =  'nanometers'
-        elif product == 'OBS':
+        elif product == '_OBS':
             clean_header['description'] = 'Observation datacube'
             clean_header['band names'] = ['path length','to-sensor azimuth',
                                           'to-sensor zenith','to-sun azimuth',
                                           'to-sun zenith','phase','slope','aspect',
                                           'cosine i','UTC time']
-        elif product == 'LOC':
+        elif product == '_LOC':
             clean_header['description'] = 'Location datacube'
             clean_header['band names'] = ['longitude','latitude','elevation']
 

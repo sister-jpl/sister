@@ -5,7 +5,7 @@ import os
 setup(
     name='sister-sbg',
     description= 'SISTER: Space-based Imaging Spectroscopy and Thermal PathfindER',
-    version='1.1.0',
+    version='1.2.0',
     url='https://github.com/EnSpec/sister',
     author = 'Adam Chlus',
     packages=find_packages(),

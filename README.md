@@ -14,32 +14,22 @@ We recommend installing the libary and its dependencies in a conda environment.
 
 To create and activate a new environment run:
 ```bash
-conda create -n sister python=3.7
-
+conda create -n sister python=3.8
 source activate sister
 ```
 
 Next install gdal:
 ```bash
-conda install -c conda-forge gdal
+conda install  gdal
 ```
 
 To install the library, clone:
 ```bash
 git clone https://github.com/EnSpec/sister.git
 ```
-and run setuptools:
+and install with pip:
 ```bash
-python setup.py install
-```
-
-If you run into dependency errors with 'ray' try uninstalling:
-```bash
-pip uninstall ray
-```
-and reinstalling with the following command:
-```bash
-pip install 'ray[default]'
+pip install ./sister
 ```
 
 ### Examples
@@ -52,43 +42,25 @@ three ENVI formated files:
 2. Location datacube (longitude, latitude, altitude)
 3. Observables datacube (sensor, solar geometry......)
 
-[PRISMA Algorithm Workflow](https://raw.githubusercontent.com/EnSpec/sister/master/figures/prisma_workflow.svg)
+[PRISMA Algorithm Workflow](https://raw.githubusercontent.com/EnSpec/sister/sister-dev/figures/prisma_workflow.svg)
 
 ```python
 
 import os
 from sister.sensors import prisma
 
-base_name = '20200621003500_20200621003505_0001'
-l1_zip  = '/data/prisma/PRS_L1_STD_OFFL_%s.zip'% base_name
+l1_zip  = '/data/prisma/PRS_L1_STD_OFFL_ 20200621003500_20200621003505_0001.zip'
 out_dir = '/data/prisma/rad/'
 temp_dir =  '/data/temp/'
+elev_dir = 'https://copernicus-dem-30m.s3.amazonaws.com/'
 
-# Copernicus DEM directory
-elev_dir = '/data/sister/data/cop_dsm/'
-
-# or AWS S3 bucket
-elev_dir =https://copernicus-dem-30m.s3.amazonaws.com/
-
-#Wavelength shift surface
-shift = 'https://github.com/EnSpec/sister/raw/master/data/prisma/wavelength_shift/PRISMA_20200721104249_20200721104253_0001_wavelength_shift_surface'
-
-#Perform Landsat image matching (recommended)
-match = True
-
-#Project image to UTM
-proj = True
-
-#Output resolution in meters
-res = 90
-
-if not os.path.isdir(out_dir):
-    os.mkdir(out_dir)
-
-if not os.path.isdir(temp_dir):
-    os.mkdir(temp_dir)
-
-prisma.he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,
-            shift = shift,match=match,proj = proj, res = res)
+prisma.he5_to_envi(l1_zip,
+			out_dir,
+			temp_dir,
+			elev_dir,
+			shift = './data/prisma/PRISMA_Mali1_wavelength_shift_surface_smooth.npz',
+			rad_coeff = './data/prisma/PRS_Mali1_radcoeff_surface.npz',
+			match= True,
+			proj = True)
 
 ```
