@@ -32,6 +32,11 @@ from .misc import download_file
 
 class Manager:
     def __init__(self,base_name,configs):
+        """
+        Class to do radiance and reflettance correection for L1 PRISMA and DESIS.
+        Base name like:PRS_20221026095902_20221026095906_0001.
+        Configs a dictionary:
+        """
 
         self.base_name = base_name
 
