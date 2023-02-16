@@ -81,15 +81,15 @@ class Manager:
                                self.tmp_dir,self.dsm_dir,
                                shift = self.rdn_cfg['shift'],
                                match = self.rdn_cfg['match'],
-                               proj = self.rdn_cfg['project'],
-                               res = self.rdn_cfg['resolution'])
+                               proj = self.rdn_cfg['project']
+                              )
         elif self.sensor == 'desis':
             l1b_zip = '%sDESIS-HSI-L1B-%s.zip' % (self.raw_dir,self.base_name.replace('PRS','PRS_L1_STD_OFFL'))
             desis.geotiff_to_envi(l1b_zip,self.rdn_dir,
                                 self.tmp_dir,self.dsm_dir,
                                 match = self.rdn_cfg['match'],
-                                proj = self.rdn_cfg['project'],
-                                res = self.rdn_cfg['resolution'])
+                                proj = self.rdn_cfg['project']
+                                )
 
     def reflectance(self):
         '''Run ISOFIT reflectance inversion
