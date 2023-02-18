@@ -34,6 +34,7 @@ from scipy.spatial import cKDTree
 from .misc import download_file
 from .geometry import utm2dd,utm_zone
 import glob
+from osgeo import gdal
 
 def terrain_generate(longitude,latitude,elev_dir,temp_dir):
     '''
