@@ -33,7 +33,7 @@ from rtree import index
 from scipy.spatial import cKDTree
 from .misc import download_file
 from .geometry import utm2dd,utm_zone
-
+import glob
 
 def terrain_generate(longitude,latitude,elev_dir,temp_dir):
     '''
@@ -102,7 +102,12 @@ def terrain_generate(longitude,latitude,elev_dir,temp_dir):
 
     logging.info('Merging DEM tiles')
     dem_file  = '%stemp_dem' % temp_dir
-    os.system('gdal_merge.py -o %s -of GTiff %sCopernicus_DSM*' % (dem_file,temp_dir))
+    print('sto usando gda.warp() al posto di merge')
+    #os.system('gdal_merge.py -o %s -of GTiff %sCopernicus_DSM*' % (dem_file,temp_dir))
+    files_to_mosaic = glob.glob('%sCopernicus_DSM*' % temp_dir) # However many you want.
+    g = gdal.Warp(dem_file, files_to_mosaic, format="GTiff",
+              options=["COMPRESS=LZW", "TILED=YES"]) # if you want
+    g = None # Close file and flush to disk
 
     zone,direction  = utm_zone(longitude, latitude)
     if direction == 'North':
