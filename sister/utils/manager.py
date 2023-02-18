@@ -148,8 +148,10 @@ class Manager:
             rad_factors = "%s/radiance_factors.txt" % rfl_tmp
             download_file(rad_factors,self.rdn_cfg['radiance_factors'])
             apply_oe += ['--rdn_factors_path',rad_factors]
-
+        print('inizio correzione atm')
+        print(apply_oe)
         apply = subprocess.Popen(apply_oe)
+        print(apply.communicate())
         apply.wait()
 
         if not os.path.isdir(os.path.dirname(self.rfl_file)):
