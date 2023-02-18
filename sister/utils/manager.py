@@ -151,7 +151,7 @@ class Manager:
         print('inizio correzione atm')
         print(apply_oe)
         apply = subprocess.Popen(apply_oe)
-        print(apply.communicate())
+        
         apply.wait()
 
         if not os.path.isdir(os.path.dirname(self.rfl_file)):
