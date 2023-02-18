@@ -509,4 +509,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
                 writer.write_band(band[start_line:end_line,start_col:end_col],iterator.current_band)
 
     logging.info('Deleting temporary files')
-    shutil.rmtree(temp_dir)
+    try:
+      shutil.rmtree(temp_dir)
+    except:
+      print('contrrolla che la cartella temporanea e i file all interno non siano aperti')
+    print('he5 tot tiff terminaato')
