@@ -118,7 +118,7 @@ class Manager:
                                 self.isofit['surface'][key])
 
         surface_config = "%s/surface_config.json" % rfl_tmp
-        surface_file = '%s/surface_filtered.mat'% rfl_tmp
+        surface_file = '%s/surface.mat'% rfl_tmp
         wavelength_file = gen_wavelength_file(self.rdn_file,
                                                rfl_tmp)
         surface_config_gen(self.isofit['windows'],
@@ -149,7 +149,7 @@ class Manager:
             download_file(rad_factors,self.rdn_cfg['radiance_factors'])
             apply_oe += ['--rdn_factors_path',rad_factors]
         print('inizio correzione atm')
-        print(apply_oe)
+        print('apply_oe')
         apply = subprocess.Popen(apply_oe)
         
         apply.wait()
