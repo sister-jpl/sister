@@ -121,12 +121,9 @@ class Manager:
         surface_file = '%s/surface_filtered.mat'% rfl_tmp
         wavelength_file = gen_wavelength_file(self.rdn_file,
                                                rfl_tmp)
-        surface_config_gen(rfl_tmp,
-                           self.isofit['surface_type'],
-                           self.isofit['windows'],
-                           wavelength_file,
-                           surface_file,
-                           surface_config)
+        surface_config_gen(self.isofit['windows'],
+                            surface_config,
+                           )
 
         surface_model(surface_config)
 
