@@ -17,7 +17,7 @@ import netCDF4 as nc
 import hytools as ht
 import numpy as np
 import datetime as dt
-from .geometry import utm_zone
+from ..utils.geometry import utm_zone
 
 
 NO_DATA_VALUE = -9999.0
