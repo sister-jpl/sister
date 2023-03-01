@@ -22,7 +22,8 @@ setup(
                       'pysolar',
                       'scikit-image',
                       'scipy',
-                      'statsmodels'],
+                      'statsmodels',
+                      'netCDF4'],
     python_requires='>=3.6, !=3.9.*',
     include_package_data=True,
     package_data={'': ['data/*']})
