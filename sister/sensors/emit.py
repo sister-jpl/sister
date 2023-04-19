@@ -11,12 +11,12 @@ https://github.com/emit-sds/emit-utils/blob/develop/emit_utils/reformat.py
 
 """
 
+import datetime as dt
 import os
 import glob
 import netCDF4 as nc
 import hytools as ht
 import numpy as np
-import datetime as dt
 from ..utils.geometry import utm_zone
 
 
@@ -74,7 +74,7 @@ def nc_to_envi(img_file,out_dir,temp_dir,obs_file=None,export_loc=False,crid='00
     glt[...,1] = np.array(img_nc.groups['location']['glt_y'])
     valid_glt = np.all(glt != 0, axis=-1)
     glt[valid_glt] -= 1
-    map_info =  f'{{Geographic Lat/Lon, 1, 1, {gt[0]}, {gt[3]}, {gt[1]}, {gt[5]*-1},WGS-84}}'
+    map_info =  f'{{Geographic Lat/Lon, 1, 1, {gt[0]}, {gt[3]}, {gt[1]}, {gt[5]*-1},WGS-84, units=degrees}}'
 
     # Get spatial and temporal extents
     latitude = np.array(img_nc.groups['location']['lat'])
@@ -85,34 +85,8 @@ def nc_to_envi(img_file,out_dir,temp_dir,obs_file=None,export_loc=False,crid='00
     corner_3 = [longitude[-1,-1],latitude[-1,-1]]
     corner_4 = [longitude[-1,0], latitude[-1,0]]
 
-    datetime = img_file.split('_')[4]
-    date = dt.datetime.strptime(datetime[:8],'%Y%m%d')
-
-    if obs_file:
-        obs_nc = nc.Dataset(obs_file)
-        utc_time = np.copy(obs_nc['obs'][:,:,9])
-        start_time = utc_time.min()
-        start_hour = int(start_time)
-        start_minute = (start_time-start_hour)*60
-        start_second = round((start_minute - int(start_minute))*60)
-        start_minute = int(start_minute)
-        start_delta = dt.timedelta(hours = start_hour,
-                                    minutes = start_minute,
-                                    seconds = start_second)
-
-        end_time = utc_time.max()
-        end_hour = int(end_time)
-        end_minute = (end_time-end_hour)*60
-        end_second = round((end_minute - int(end_minute))*60)
-        end_minute = int(end_minute)
-        end_delta = dt.timedelta(hours = end_hour,
-                                    minutes = end_minute,
-                                    seconds = end_second)
-        start_time = date+start_delta
-        end_time = date+end_delta
-    else:
-        start_time = date
-        end_time = date
+    start_time = dt.datetime.strptime(img_nc.time_coverage_start,'%Y-%m-%dT%H:%M:%S+0000')
+    end_time = dt.datetime.strptime(img_nc.time_coverage_end,'%Y-%m-%dT%H:%M:%S+0000')
 
     # Process radiance/reflectace datacubes
     data_header = ht.io.envi_header_dict()
@@ -147,7 +121,7 @@ def nc_to_envi(img_file,out_dir,temp_dir,obs_file=None,export_loc=False,crid='00
 
     # Reproject to UTM
     print(f'Projecting data to UTM Zone {zone} {direction} at 60m resolution')
-    data_utm = f'{out_dir}/SISTER_EMIT_{product}_{datetime}_{crid}.bin'
+    data_utm = f'{out_dir}/SISTER_EMIT_{product}_{start_time.strftime("%Y%m%dT%H%M%S")}_{crid}.bin'
     warp_command = f'gdalwarp -overwrite -t_srs {out_crs} -tr 60 60 -r near -of ENVI {data_gcs} {data_utm}'
     os.system(warp_command)
 
@@ -164,6 +138,7 @@ def nc_to_envi(img_file,out_dir,temp_dir,obs_file=None,export_loc=False,crid='00
     data_header['bounding box'] =[corner_1,corner_2,corner_3,corner_4]
     data_header['coordinate system string'] = []
     data_header['sensor type'] ='EMIT'
+    data_header['map info'] += ['units=Meters']
     ht.io.envi.write_envi_header(data_header_file,data_header)
 
     if export_loc:
@@ -190,7 +165,7 @@ def nc_to_envi(img_file,out_dir,temp_dir,obs_file=None,export_loc=False,crid='00
             writer.write_band(loc_band, band_num)
             loc_band[:] = NO_DATA_VALUE
 
-        loc_utm =   f'{out_dir}/SISTER_EMIT_{product}_{datetime}_{crid}_LOC.bin'
+        loc_utm =   f'{out_dir}/SISTER_EMIT_{product}_{start_time.strftime("%Y%m%dT%H%M%S")}_{crid}_LOC.bin'
 
         print(f'Projecting location datacube to UTM Zone {zone} {direction} at 60m resolution')
         warp_command = f'gdalwarp -overwrite -t_srs {out_crs} -tr 60 60 -r near -of ENVI {loc_gcs} {loc_utm}'
@@ -206,13 +181,14 @@ def nc_to_envi(img_file,out_dir,temp_dir,obs_file=None,export_loc=False,crid='00
         loc_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
         loc_header['bounding box'] =[corner_1,corner_2,corner_3,corner_4]
         loc_header['sensor type'] ='EMIT'
+        loc_header['map info'] += ['units=Meters']
 
         ht.io.envi.write_envi_header(loc_header_file,loc_header)
 
     if obs_file:
         # Process observation datacube
         print(f"Exporting EMIT observation dataset")
-
+        obs_nc = nc.Dataset(obs_file)
         obs_header = ht.io.envi_header_dict()
         obs_header['lines']= glt.shape[0]
         obs_header['samples']= glt.shape[1]
@@ -232,9 +208,9 @@ def nc_to_envi(img_file,out_dir,temp_dir,obs_file=None,export_loc=False,crid='00
             band = np.copy(obs_nc['obs'][:,:,band_num])
             obs_band[valid_glt] = band[glt[valid_glt, 1], glt[valid_glt,0]]
             writer.write_band(obs_band, band_num)
-            loc_band[:] = NO_DATA_VALUE
+            obs_band[:] = NO_DATA_VALUE
 
-        obs_utm = f'{out_dir}/SISTER_EMIT_{product}_{datetime}_{crid}_OBS.bin'
+        obs_utm = f'{out_dir}/SISTER_EMIT_{product}_{start_time.strftime("%Y%m%dT%H%M%S")}_{crid}_OBS.bin'
 
         print(f'Projecting observation datacube to UTM Zone {zone} {direction} at 60m resolution')
         warp_command = f'gdalwarp -overwrite -t_srs {out_crs} -tr 60 60 -r near -of ENVI {obs_gcs} {obs_utm}'
@@ -253,6 +229,7 @@ def nc_to_envi(img_file,out_dir,temp_dir,obs_file=None,export_loc=False,crid='00
         obs_header['end acquisition time'] = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
         obs_header['bounding box'] =[corner_1,corner_2,corner_3,corner_4]
         obs_header['sensor type'] ='EMIT'
+        obs_header['map info'] += ['units=Meters']
 
         ht.io.envi.write_envi_header(obs_header_file,obs_header)
 
