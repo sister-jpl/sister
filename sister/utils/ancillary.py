@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import logging
 from hytools.io.envi import WriteENVI,envi_header_dict
-
+import numpy as np
 
 def loc_export(loc_file,longitude,latitude,elevation):
     '''Export location datasets to disk
@@ -35,10 +35,18 @@ def loc_export(loc_file,longitude,latitude,elevation):
     loc_header['band names'] = ['longitude', 'latitude','elevation']
     loc_header['byte order'] = 0
 
-    writer = WriteENVI(loc_file,loc_header)
-    writer.write_band(longitude,0)
-    writer.write_band(latitude,1)
-    writer.write_band(elevation,2)
+    loc = np.array([longitude,latitude,elevation])
+    loc = np.moveaxis(loc,0,-1)
+
+    WriteENVI(loc_file,loc_header)
+    outfile = open(loc_file, 'rb+')
+
+    line_num=0
+    for line in loc:
+        outfile.seek(line_num * loc_header['samples'] *  loc_header['bands'] * np.dtype('float32').itemsize)
+        outfile.write(line.T.astype('float32').tobytes())
+        line_num+=1
+    outfile.close()
 
 
 def obs_export(obs_file,pathlength,sensor_az,sensor_zn,solar_az,solar_zn,phase,slope,aspect,cosine_i,utc_time):
@@ -46,8 +54,8 @@ def obs_export(obs_file,pathlength,sensor_az,sensor_zn,solar_az,solar_zn,phase,s
     '''
     obs_header = envi_header_dict()
     obs_header['description'] = 'Observation datacube'
-    obs_header['lines']= pathlength.shape[0]
-    obs_header['samples']= pathlength.shape[1]
+    obs_header['lines']= sensor_az.shape[0]
+    obs_header['samples']= sensor_az.shape[1]
     obs_header['bands']= 10
     obs_header['interleave']= 'bil'
     obs_header['data type'] = 4
@@ -57,14 +65,18 @@ def obs_export(obs_file,pathlength,sensor_az,sensor_zn,solar_az,solar_zn,phase,s
                                   'to-sun zenith','phase', 'slope',
                                   'aspect', 'cosine i','UTC time']
 
-    writer = WriteENVI(obs_file,obs_header)
-    writer.write_band(pathlength,0)
-    writer.write_band(sensor_az,1)
-    writer.write_band(sensor_zn,2)
-    writer.write_band(solar_az,3)
-    writer.write_band(solar_zn,4)
-    writer.write_band(phase,5)
-    writer.write_band(slope,6)
-    writer.write_band(aspect,7)
-    writer.write_band(cosine_i,8)
-    writer.write_band(utc_time,9)
+    WriteENVI(obs_file,obs_header)
+
+    obs = np.array([pathlength,sensor_az,sensor_zn,
+                    solar_az,solar_zn,phase,
+                    slope,aspect,cosine_i,utc_time])
+    obs = np.moveaxis(obs,0,-1)
+
+    outfile = open(obs_file, 'rb+')
+
+    line_num=0
+    for line in obs:
+        outfile.seek(line_num * obs_header['samples'] *  obs_header['bands'] * np.dtype('float32').itemsize)
+        outfile.write(line.T.astype('float32').tobytes())
+        line_num+=1
+    outfile.close()

@@ -144,14 +144,22 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     rdn_dict['bands']=  vnir_data.shape[1]
     rdn_dict['wavelength']= vnir_waves
     rdn_dict['fwhm']= vnir_fwhm
-    rdn_dict['interleave']= 'bsq'
+    rdn_dict['interleave']= 'bil'
     rdn_dict['data type'] = 12
     rdn_dict['wavelength units'] = "nanometers"
     rdn_dict['byte order'] = 0
     vnir_temp = f'{temp_dir}/PRS_{base_name}_{measurement}_vnir'
 
-    writer = WriteENVI(vnir_temp,rdn_dict )
-    writer.write_chunk(np.moveaxis(vnir_data[:,:,:],1,2), 0,0)
+    writer = WriteENVI(vnir_temp,rdn_dict)
+    vnir_data = np.copy(vnir_data[:,:,:])
+
+    outfile = open(vnir_temp, 'rb+')
+    for line_num in range(rdn_dict['lines']):
+        if line_num%100 == 0:
+            print(line_num)
+        outfile.seek(line_num * rdn_dict['samples'] *  rdn_dict['bands'] * np.dtype('uint16').itemsize)
+        outfile.write(vnir_data[line_num].astype('uint16').tobytes())
+    outfile.close()
 
     # Export SWIR to temporary ENVI
     swir_data =  l1_obj['HDFEOS']["SWATHS"]['PRS_L1_HCO']['Data Fields']['SWIR_Cube']
@@ -166,7 +174,16 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     swir_temp = f'{temp_dir}/PRS_{base_name}_{measurement}_swir'
 
     writer = WriteENVI(swir_temp,rdn_dict )
-    writer.write_chunk(np.moveaxis(swir_data[:,:,:],1,2), 0,0)
+
+    swir_data = np.copy(swir_data[:,:,:])
+
+    outfile = open(swir_temp, 'rb+')
+    for line_num in range(rdn_dict['lines']):
+        if line_num%100 == 0:
+            print(line_num)
+        outfile.seek(line_num * rdn_dict['samples'] *  rdn_dict['bands'] * np.dtype('uint16').itemsize)
+        outfile.write(swir_data[line_num].astype('uint16').tobytes())
+    outfile.close()
 
     vnir_waves = np.flip(vnir_waves[3:]) #6
     swir_waves = np.flip(swir_waves[:-6]) #-3
@@ -199,6 +216,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
     iterator_v =vnir_obj.iterate(by = 'line')
     iterator_s =swir_obj.iterate(by = 'line')
 
+    outfile = open(rdn_file, 'rb+')
+
     while not iterator_v.complete:
         chunk_v = iterator_v.read_next()[:,3:]
         chunk_v =np.flip(chunk_v,axis=1)
@@ -225,7 +244,9 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
             if apply_coeff:
                 line*=coeff_arr[iterator_v.current_line-2,:]
 
-            writer.write_line(line, iterator_v.current_line-2)
+            outfile.seek((iterator_v.current_line-2) * rdn_dict['samples'] *  rdn_dict['bands'] * np.dtype('float32').itemsize)
+            outfile.write(line.T.astype('float32').tobytes())
+
 
     #Load ancillary datasets
     geo =  l1_obj['HDFEOS']["SWATHS"]['PRS_L1_HCO']['Geolocation Fields']
@@ -509,4 +530,8 @@ def he5_to_envi(l1_zip,out_dir,temp_dir,elev_dir,shift = False, rad_coeff = Fals
                 writer.write_band(band[start_line:end_line,start_col:end_col],iterator.current_band)
 
     logging.info('Deleting temporary files')
-    shutil.rmtree(temp_dir)
+
+    try:
+        shutil.rmtree(temp_dir)
+    except:
+        os.system(f'rm -r {temp_dir}')
