@@ -233,8 +233,10 @@ def image_match(ref_band,warp_band,offset_x,offset_y,sensor_zn_prj,sensor_az_prj
 
     if ray.is_initialized():
         ray.shutdown()
+        logging.info('Ray shutdown')
+
     ray.init(num_cpus=10)
-    logging.info('Ray intitialized')
+    logging.info('Ray intitialized with 10 CPUs')
 
     # Share arrays
     warp_band_r = ray.put(warp_band)
