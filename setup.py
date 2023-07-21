@@ -14,7 +14,7 @@ setup(
                       'h5py',
                       'hy-tools',
                       'numba',
-                      'numpy',
+                      'numpy==1.19.2',
                       'ray',
                       'rtree',
                       'pandas',

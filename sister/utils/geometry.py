@@ -233,7 +233,10 @@ def image_match(ref_band,warp_band,offset_x,offset_y,sensor_zn_prj,sensor_az_prj
 
     if ray.is_initialized():
         ray.shutdown()
-    ray.init()
+        logging.info('Ray shutdown')
+
+    ray.init(num_cpus=10)
+    logging.info('Ray intitialized with 10 CPUs')
 
     # Share arrays
     warp_band_r = ray.put(warp_band)
@@ -262,7 +265,10 @@ def image_match(ref_band,warp_band,offset_x,offset_y,sensor_zn_prj,sensor_az_prj
                                                         offset_x,offset_y,
                                                         warp_band_r,ref_band_r,
                                                         shift_max))
+
+    logging.info('Correlation matching complete')
     results = ray.get(results)
+    logging.info('Ray results retrieved')
 
     # Put results into arrays
     shift_surf = np.zeros((1+warp_band.shape[0]//step,1+warp_band.shape[1]//step,2))
@@ -272,6 +278,7 @@ def image_match(ref_band,warp_band,offset_x,offset_y,sensor_zn_prj,sensor_az_prj
         corr_surf[int(sy),int(sx)] = opt_corr
 
     ray.shutdown()
+    logging.info('Ray shutdown')
 
     # Calculate shift slopes
     px, py = np.gradient(shift_surf[:,:,0])
