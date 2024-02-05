@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import os
 import shutil
+import tarfile
 import datetime as dt
 import hytools as ht
 from hytools.io.envi import WriteENVI
@@ -139,7 +140,7 @@ def get_temporal_extent(obs_ort_file):
 
     return start_delta,end_delta
 
-def preprocess(rdn_file,obs_ort_file,loc_file,glt_file,out_dir,res = 0):
+def preprocess(input_tar,out_dir,temp_dir,res = 0):
     '''
     Preprocess AVIRIS data for SISTER workflow
 
@@ -168,7 +169,7 @@ def preprocess(rdn_file,obs_ort_file,loc_file,glt_file,out_dir,res = 0):
 
     '''
 
-    base_name = os.path.basename(rdn_file)
+    base_name = os.path.basename(input_tar)
 
     if base_name.startswith('ang'):
         base_name = base_name[:18]
@@ -179,27 +180,40 @@ def preprocess(rdn_file,obs_ort_file,loc_file,glt_file,out_dir,res = 0):
     else:
         raise ValueError('Unrecognized sensor')
 
+    file = tarfile.open(input_tar)
+    tar_contents = [temp_dir+c for c in file.getnames()]
+    file.extractall(temp_dir)
+    file.close()
+
     #AVIRIS NG
     if base_name.startswith('ang'):
         instrument = 'AVNG'
+        obs_ort_file = [x for x in tar_contents if x.endswith('obs_ort')][0]
+        rdn_file = [x for x in tar_contents if x.endswith('img')][0]
+        loc_file = [x for x in tar_contents if x.endswith('loc')][0]
+        glt_file = [x for x in tar_contents if x.endswith('glt')][0]
         corner_1,corner_2,corner_3,corner_4 = create_loc_ort(loc_file,glt_file)
         time_correct(obs_ort_file)
-        loc_ort_file = loc_file+'_ort'
 
     #AVIRIS Classic
     elif base_name.startswith('f'):
         instrument = 'AVCL'
+        obs_ort_file = [x for x in tar_contents if x.endswith('obs_ort')][0]
+        rdn_file = [x for x in tar_contents if x.endswith('ort_img')][0]
+        igm_file = [x for x in tar_contents if x.endswith('igm')][0]
+        glt_file = [x for x in tar_contents if x.endswith('ort_glt')][0]
 
         #Rename files for consistency
-        new_loc_file = loc_file[:-4].replace('igm','loc')
-        os.rename(loc_file,new_loc_file)
-        os.rename(loc_file[:-4]+'.hdr',new_loc_file+'.hdr')
+        loc_file = igm_file.replace('igm','loc')
+        os.rename(igm_file,loc_file)
+        os.rename(igm_file+'.hdr',loc_file+'.hdr')
 
         #Scale radiance
-        new_rdn_file = rdn_file[:-4]+'_unscale'
+        os.rename(rdn_file,rdn_file+'_unscale')
+        os.rename(rdn_file + '.hdr',rdn_file+'_unscale.hdr')
 
         rdn = ht.HyTools()
-        rdn.read_file(rdn_file,'envi')
+        rdn.read_file(rdn_file+'_unscale','envi')
 
         prefix = rdn.base_name[:3]
         if prefix in ['f95', 'f96', 'f97', 'f98', 'f99', 'f00',
@@ -210,14 +224,14 @@ def preprocess(rdn_file,obs_ort_file,loc_file,glt_file,out_dir,res = 0):
                         'f18', 'f19', 'f20', 'f21']:
             gains = np.r_[300.0 * np.ones(110), 600.0 * np.ones(50), 1200.0 * np.ones(64)]
 
-        corner_1,corner_2,corner_3,corner_4 = create_loc_ort(new_loc_file,glt_file)
+        corner_1,corner_2,corner_3,corner_4 = create_loc_ort(loc_file,glt_file)
 
         rdn_header = rdn.get_header()
         rdn_header['byte order'] = 0
         rdn_header['no data value'] = -9999
         rdn_header['data type'] = 4
 
-        writer = WriteENVI(new_rdn_file,rdn_header)
+        writer = WriteENVI(rdn.file_name.replace('_unscale',''),rdn_header)
         iterator =rdn.iterate(by = 'line')
 
         while not iterator.complete:
@@ -225,7 +239,7 @@ def preprocess(rdn_file,obs_ort_file,loc_file,glt_file,out_dir,res = 0):
             line[~rdn.mask['no_data'][iterator.current_line],:] = -9999
             writer.write_line(line,iterator.current_line)
 
-        loc_ort_file = new_loc_file+'_ort'
+    loc_ort_file = loc_file+'_ort'
 
     #Get spatial and temporal extents of dataset
     start_delta,end_delta = get_temporal_extent(obs_ort_file)
@@ -233,7 +247,7 @@ def preprocess(rdn_file,obs_ort_file,loc_file,glt_file,out_dir,res = 0):
     end_time = date+end_delta
     datetime = start_time.strftime('%Y%m%dT%H%M%S')
 
-    for file in [obs_ort_file,new_rdn_file,loc_ort_file]:
+    for file in [obs_ort_file,rdn_file,loc_ort_file]:
 
         if 'loc' in file:
             product = '_LOC'
@@ -246,7 +260,7 @@ def preprocess(rdn_file,obs_ort_file,loc_file,glt_file,out_dir,res = 0):
         new_file_hdr = new_file.replace('.bin','.hdr')
 
         os.rename(file,new_file)
-        os.rename(file.replace('.bin','')+ '.hdr',new_file_hdr)
+        os.rename(file+ '.hdr',new_file_hdr)
 
         #Add spatial and temporal extents to header file
         header = ht.io.envi.parse_envi_header(new_file_hdr)
@@ -260,7 +274,6 @@ def preprocess(rdn_file,obs_ort_file,loc_file,glt_file,out_dir,res = 0):
         clean_header['data type'] =  header['data type']
         clean_header['map info'] =  header['map info']
         clean_header['sensor type'] =instrument
-        clean_header['data ignore value'] = -9999
 
         if product == '':
             clean_header['description'] = 'Radiance micro-watts/cm^2/nm/sr'
@@ -288,5 +301,5 @@ def preprocess(rdn_file,obs_ort_file,loc_file,glt_file,out_dir,res = 0):
             shutil.move(new_file_hdr,out_dir)
         else:
             resample(new_file,out_dir,res)
-            os.remove(new_file)
-            os.remove(new_file.replace('.bin','')+ '.hdr')
+
+    shutil.rmtree(tar_contents[0])
