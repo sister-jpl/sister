@@ -1,0 +1,4 @@
+Instrument,Domain,Area,Flight Line,Platform,l1_granule,Valid URL,Valid URL,Priority
+AVIRIS Classic,Aquatic,"Kaneohe Bay, Oahu",f180126t01p00r08,1,https://popo.jpl.nasa.gov/avcl/y18_data/f180126t01p00r08.tar.gz,TRUE,TRUE,HIGH
+AVIRIS Classic,Snow/Ice,"Grand Mesa,CO",f110513t01p00r03,1,https://popo.jpl.nasa.gov/avcl/y11_data/f110513t01p00r03.tar.gz,TRUE,TRUE,LOW
+AVIRIS Classic,Terrestrial,"Sierras, CA",f130612t01p00r10,1,https://popo.jpl.nasa.gov/avcl/y13_data/f130612t01p00r10.tar.gz,TRUE,TRUE,LOW
